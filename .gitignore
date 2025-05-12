@@ -1,0 +1,5 @@
+_bin/
+_build_vs/
+third_party/
+./build_vs.bat
+./CMakeLists.txt
