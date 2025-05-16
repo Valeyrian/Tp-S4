@@ -30,6 +30,8 @@ void QuoridorCore_getShortestPath(QuoridorCore *self, int playerID, QuoridorPos 
     // TODO
 }
 
+
+
 /// @brief Calcule une heuristique d'évaluation de l'état du jeu pour un joueur donné.
 /// Cette fonction est utilisée dans l'algorithme Min-Max pour estimer la qualité d'une position.
 /// Elle retourne une valeur représentant l'avantage du joueur playerID.
@@ -99,4 +101,193 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore *self, int depth, void *aiDat
     const float beta = INFINITY;
     float childValue = QuoridorCore_minMax(self, self->playerID, 0, depth, alpha, beta, &childTurn);
     return childTurn;
+}
+int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves)
+{
+    int Id = 0;
+    const int gridSize = self->gridSize;
+    const int currI = self->positions[self->playerID].i;
+    const int currJ = self->positions[self->playerID].j;
+    const int otherI = self->positions[self->playerID ^ 1].i;
+    const int otherJ = self->positions[self->playerID ^ 1].j;
+
+    for (int i = 0; i < MAX_GRID_SIZE; i++)
+    {
+        for (int j = 0; j < MAX_GRID_SIZE; j++)
+        {
+            self->isValid[i][j] = false;
+        }
+    }
+
+    //ajoute ou non des 4 cases voisines
+
+    if (currI > 0 && !QuoridorCore_hasWallAbove(self, currI, currJ)) // on ajoute au dessus
+    {
+        if (!(currI - 1 == otherI && currJ == otherJ))
+        {
+            self->isValid[currI - 1][currJ] = true;
+            moves[Id].i = currI - 1;
+            moves[Id++].j = currJ;
+
+        }
+            
+    }
+    if (currI < gridSize - 1 && !QuoridorCore_hasWallBelow(self, currI, currJ)) //on ajoute en dessous
+    {
+        if (!(currI + 1 == otherI && currJ == otherJ))
+        {
+            self->isValid[currI + 1][currJ] = true;
+            moves[Id].i = currI + 1;
+            moves[Id++].j = currJ;
+        }
+    }
+    if (currJ > 0 && !QuoridorCore_hasWallLeft(self, currI, currJ)) // on ajoute a gauche
+    {
+        if (!(currI == otherI && currJ - 1 == otherJ))
+        {
+            self->isValid[currI][currJ - 1] = true;
+            moves[Id].i = currI;
+            moves[Id++].j = currJ - 1;
+        }
+
+    }
+    if (currJ < gridSize - 1 && !QuoridorCore_hasWallRight(self, currI, currJ)) // on ajoute a droite
+    {
+        if (!(currI == otherI && currJ + 1 == otherJ))
+        {
+            self->isValid[currI][currJ + 1] = true;
+            moves[Id].i = currI;
+            moves[Id++].j = currJ + 1;
+        }
+
+    }
+
+
+    /// ------------------------------------------------------------------------
+    //ajoust ou non des coups du mouton
+
+    if (otherI > 0) // on saute par dessu l'autre joueurs vers le hauts
+    {
+        if (otherI == currI - 1 && otherJ == currJ)
+        {
+            if (!QuoridorCore_hasWallAbove(self, currI, currJ) && !QuoridorCore_hasWallAbove(self, otherI, currJ))
+            {
+                self->isValid[otherI - 1][currJ] = true;
+            }
+        }
+    }
+
+    if (otherI < gridSize - 1) // on saute par dessu l'autre joueurs vers le bas 
+    {
+        if (otherI == currI + 1 && otherJ == currJ)
+        {
+            if (!QuoridorCore_hasWallBelow(self, currI, currJ) && !QuoridorCore_hasWallBelow(self, otherI, currJ))
+            {
+                self->isValid[otherI + 1][currJ] = true;
+            }
+        }
+    }
+
+    if (otherJ > 0) // on saute par dessu l'autre joueurs vers la gauche
+    {
+        if (otherI == currI && otherJ == currJ - 1)
+        {
+            if (!QuoridorCore_hasWallLeft(self, currI, currJ) && !QuoridorCore_hasWallLeft(self, otherI, otherJ))
+            {
+                self->isValid[currI][otherJ - 1] = true;
+            }
+        }
+    }
+
+    if (otherJ < gridSize - 1) // on saute par dessu l'autre joueurs vers la droite 
+    {
+        if (otherI == currI && otherJ == currJ + 1)
+        {
+            if (!QuoridorCore_hasWallRight(self, currI, currJ) && !QuoridorCore_hasWallRight(self, otherI, otherJ))
+            {
+                self->isValid[currI][otherJ + 1] = true;
+            }
+        }
+    }
+
+    /// --------------------------------------------------------------------
+
+
+    // ajoute les coups du cheval         
+
+    if (otherI > 0) // on saute par dessu l'autre joueurs du bas vers la gauche ou la droite (asscendant)
+    {
+        if (otherI == currI - 1 && otherJ == currJ)
+        {
+            if (QuoridorCore_hasWallAbove(self, otherI, otherJ) && !QuoridorCore_hasWallAbove(self, currI, currJ))
+            {
+                if (!QuoridorCore_hasWallLeft(self, otherI, otherJ) && otherJ > 0)
+                {
+                    self->isValid[otherI][otherJ - 1] = true;
+                }
+                if (!QuoridorCore_hasWallRight(self, otherI, otherJ) && otherJ < gridSize - 1)
+                {
+                    self->isValid[otherI][otherJ + 1] = true;
+                }
+            }
+        }
+    }
+
+    if (otherI < gridSize - 1) // on saute par dessu l'autre joueurs du haut vers la gauche ou la droite (descendant)
+    {
+        if (otherI == currI + 1 && otherJ == currJ)
+        {
+            if (QuoridorCore_hasWallBelow(self, otherI, otherJ) && !QuoridorCore_hasWallBelow(self, currI, currJ))
+            {
+                if (!QuoridorCore_hasWallLeft(self, otherI, otherJ) && otherJ > 0)
+                {
+                    self->isValid[otherI][otherJ - 1] = true;
+                }
+                if (!QuoridorCore_hasWallRight(self, otherI, otherJ) && otherJ < gridSize - 1)
+                {
+                    self->isValid[otherI][otherJ + 1] = true;
+                }
+            }
+        }
+    }
+
+    if (otherJ > 0) // on saute par dessu l'autre joueurs vers la gauche
+    {
+        if (otherI == currI && otherJ == currJ - 1)
+        {
+            if (QuoridorCore_hasWallLeft(self, otherI, otherJ) && !QuoridorCore_hasWallLeft(self, currI, currJ))
+            {
+                if (!QuoridorCore_hasWallAbove(self, otherI, otherJ) && otherI > 0)
+                {
+                    self->isValid[otherI - 1][otherJ] = true;
+                }
+                if (!QuoridorCore_hasWallBelow(self, otherI, otherJ) && otherI < gridSize - 1)
+                {
+                    self->isValid[otherI + 1][otherJ] = true;
+                }
+            }
+
+        }
+    }
+
+
+    if (otherJ < gridSize - 1) // on saute par dessu l'autre joueurs vers la droite
+    {
+        if (otherI == currI && otherJ == currJ + 1)
+        {
+            if (QuoridorCore_hasWallRight(self, otherI, otherJ) && !QuoridorCore_hasWallRight(self, currI, currJ))
+            {
+                if (!QuoridorCore_hasWallAbove(self, otherI, otherJ) && otherI > 0)
+                {
+                    self->isValid[otherI - 1][otherJ] = true;
+                }
+                if (!QuoridorCore_hasWallBelow(self, otherI, otherJ) && otherI < gridSize - 1)
+                {
+                    self->isValid[otherI + 1][otherJ] = true;
+                }
+            }
+        }
+    }
+    return Id;
+
 }

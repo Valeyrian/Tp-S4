@@ -149,19 +149,23 @@ void QuoridorCore_updateValidMoves(QuoridorCore *self)
 
     if (currI > 0 && !QuoridorCore_hasWallAbove(self, currI, currJ)) // on ajoute au dessus
     {
-		self->isValid[currI - 1][currJ] = true;
+        if (!(currI - 1 == otherI && currJ == otherJ))
+	        self->isValid[currI - 1][currJ] = true;
     }
 	if (currI < gridSize - 1 && !QuoridorCore_hasWallBelow(self, currI, currJ)) //on ajoute en dessous
 	{
-		self->isValid[currI + 1][currJ] = true;
+        if (!(currI + 1 == otherI && currJ == otherJ))
+            self->isValid[currI + 1][currJ] = true;
 	}
 	if (currJ > 0 && !QuoridorCore_hasWallLeft(self, currI, currJ)) // on ajoute a gauche
 	{
-		self->isValid[currI][currJ - 1] = true;
+        if (!(currI == otherI && currJ - 1 == otherJ))
+		    self->isValid[currI][currJ - 1] = true;
 	}
 	if (currJ < gridSize - 1 && !QuoridorCore_hasWallRight(self, currI, currJ)) // on ajoute a droite
     { 
-		self->isValid[currI][currJ + 1] = true;
+        if (!(currI == otherI && currJ + 1 == otherJ))
+		    self->isValid[currI][currJ + 1] = true;
     }
 
 
