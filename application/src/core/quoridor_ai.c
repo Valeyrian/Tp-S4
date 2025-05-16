@@ -6,6 +6,7 @@
 
 #include "core/quoridor_core.h"
 #include "core/utils.h"
+#include "core/graph.h"
 
 void *AIData_create(QuoridorCore *core)
 {
@@ -26,6 +27,14 @@ void AIData_reset(void *self)
 void QuoridorCore_getShortestPath(QuoridorCore *self, int playerID, QuoridorPos *path, int *size)
 {
     *size = 0;
+    Graph* graph = Graph_create(81);
+    for (int i = 0; i < 81; i++)
+    {
+        QuoridorPos moves[8];
+        int moveCount = QuoridorCore_getMoves(self, moves);
+
+        for(int j= ;j)
+    }
 
     // TODO
 }
