@@ -78,7 +78,7 @@ void QuoridorCore_getShortestPath(QuoridorCore *self, int playerID, QuoridorPos 
     {
         int tmp = ListInt_popLast(bestpath->list);
 
-        path[idx++].i = (tmp - tmp%9) / 9;
+        path[idx].i = (tmp - tmp%9) / 9;
         path[idx++].j = tmp%9;
 
                 

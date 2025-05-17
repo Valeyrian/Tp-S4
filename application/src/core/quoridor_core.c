@@ -136,7 +136,7 @@ void QuoridorCore_updateValidMoves(QuoridorCore *self)
     QuoridorCore_getShortestPath(self, self->playerID, path, &size);
     for (int i = 0; i < size; i++)
     {
-        printf(".i = %d, .j = %d\t", path[i].i, path[i].j);
+        printf("(%d,%d) -> ", path[i].i, path[i].j);
     }
     printf("\n");
     const int gridSize = self->gridSize;
@@ -393,7 +393,7 @@ static bool QuoridorCore_isFeasibleRec1(QuoridorCore *self, bool explored[MAX_GR
     {
         if (!QuoridorCore_hasWallAbove(self, i, j) && !explored[nextI][nextJ]) //verifie si y a pas de mur au dessus ou pas deja visite
         {
-            if (QuoridorCore_isFeasibleRec0(self, explored, nextI, nextJ))
+            if (QuoridorCore_isFeasibleRec1(self, explored, nextI, nextJ))
                 return true;
         }
     }
@@ -406,7 +406,7 @@ static bool QuoridorCore_isFeasibleRec1(QuoridorCore *self, bool explored[MAX_GR
     {
         if (!QuoridorCore_hasWallBelow(self, i, j) && !explored[nextI][nextJ]) //verifie si y a pas de mur en dessous ou pas deja visite
         {
-            if (QuoridorCore_isFeasibleRec0(self, explored, nextI, nextJ))
+            if (QuoridorCore_isFeasibleRec1(self, explored, nextI, nextJ))
                 return true;
         }
     }
@@ -419,7 +419,7 @@ static bool QuoridorCore_isFeasibleRec1(QuoridorCore *self, bool explored[MAX_GR
     {
         if (!QuoridorCore_hasWallLeft(self, i, j) && !explored[nextI][nextJ]) //verifie si y a pas de mur a gauche ou pas deja visite 
         {
-            if (QuoridorCore_isFeasibleRec0(self, explored, nextI, nextJ))
+            if (QuoridorCore_isFeasibleRec1(self, explored, nextI, nextJ))
                 return true;
         }
     }
@@ -432,7 +432,7 @@ static bool QuoridorCore_isFeasibleRec1(QuoridorCore *self, bool explored[MAX_GR
     {
         if (!QuoridorCore_hasWallRight(self, i, j) && !explored[nextI][nextJ]) //verifie si y a pas de mur a droite ou pas deja visite 
         {
-            if (QuoridorCore_isFeasibleRec0(self, explored, nextI, nextJ))
+            if (QuoridorCore_isFeasibleRec1(self, explored, nextI, nextJ))
                 return true;
         }
     }
