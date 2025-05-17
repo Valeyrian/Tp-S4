@@ -8,9 +8,9 @@
 #include "core/utils.h"
 #include "core/graph.h"
 #include "core/shortest_path.h"
-#include "core/listQuor.h"
+#include "core/quoridor_ai.h"
 
-#define MAX_BEST_WALLS 5
+#define MAX_BEST_WALLS 1
 
 void *AIData_create(QuoridorCore *core)
 {
@@ -125,7 +125,6 @@ static float QuoridorCore_computeScore(QuoridorCore *self, int playerID)
     QuoridorCore_getShortestPath(self, playerA, path, &distA,graph);
     Graph* graph2 = QuoridorCore_initGraph(self, playerB);
     QuoridorCore_getShortestPath(self, playerB, path, &distB,graph2);
-    printf("aa");
     Graph_destroy(graph);
     Graph_destroy(graph2);
     // 2. Ajouter pondération sur le nombre de murs restants (optionnel mais utile)
@@ -225,25 +224,25 @@ static float QuoridorCore_minMax(
                 break;
         }
     }
-    ListQuor* list = getBestWall(self, playerID, 999);
-    QuoridorWall* walls = calloc(5, sizeof(QuoridorWall));
-    int index = 0;
-    while (list)
+    QuoridorWall* walls = (QuoridorWall*)calloc(sizeof(QuoridorWall), MAX_BEST_WALLS); // on initialise le tableau de 5 murs 
+
+    getBestWall(self, playerID, 999, walls);
+
+    for (int m = 0; m < MAX_BEST_WALLS; m++)
     {
-        walls[index] = ListQuor_pop_first(list);
 
         QuoridorCore gamecopy = *self;
 
-        if (walls[index].type == WALL_TYPE_HORIZONTAL)
+        if (walls[m].type == WALL_TYPE_HORIZONTAL)
         {
-            gamecopy.hWalls[walls[index].pos.i][walls[index].pos.j] = WALL_STATE_START;
-            gamecopy.hWalls[walls[index].pos.i][walls[index].pos.j+1] = WALL_STATE_END;
+            gamecopy.hWalls[walls[m].pos.i][walls[m].pos.j] = WALL_STATE_START;
+            gamecopy.hWalls[walls[m].pos.i][walls[m].pos.j+1] = WALL_STATE_END;
 
         }
-        if (walls[index].type == WALL_TYPE_VERTICAL)
+        if (walls[m].type == WALL_TYPE_VERTICAL)
         {
-            gamecopy.vWalls[walls[index].pos.i][walls[index].pos.j] = WALL_STATE_START;
-            gamecopy.vWalls[walls[index].pos.i+1][walls[index].pos.j] = WALL_STATE_END;
+            gamecopy.vWalls[walls[m].pos.i][walls[m].pos.j] = WALL_STATE_START;
+            gamecopy.vWalls[walls[m].pos.i+1][walls[m].pos.j] = WALL_STATE_END;
         }
         float tmp = QuoridorCore_minMax(&gamecopy, playerID ^ 1, currDepth + 1, maxDepth, alpha, beta, turn);
         if (maximizing)
@@ -254,7 +253,7 @@ static float QuoridorCore_minMax(
                 value = tmp;
                 if (currDepth == 0)
                 {
-                    best = index;
+                    best = m;
                     IsWall = 1;
 
                 }
@@ -271,7 +270,6 @@ static float QuoridorCore_minMax(
             if (beta < alpha)
                 break;
         }
-        index++;
 
     }
     if (IsWall == 0)
@@ -314,7 +312,7 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore *self, int depth, void *aiDat
 
     const float alpha = -INFINITY;
     const float beta = INFINITY;
-    float childValue = QuoridorCore_minMax(self, self->playerID, 0, depth, alpha, beta, &childTurn);
+    float childValue = QuoridorCore_minMax(self, self->playerID, 1, depth, alpha, beta, &childTurn);
     return childTurn;
 }
 int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves, QuoridorPos pos, int player)
@@ -510,10 +508,6 @@ int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves, QuoridorPos po
 
 }
 
-
-
-
-
 //fonction pour comparer des murs grace a leur score de gain
 
 int compareWalls(const void* a, const void* b) {
@@ -523,25 +517,24 @@ int compareWalls(const void* a, const void* b) {
 }
 
 
-QuoridorWall *getBestWall(QuoridorCore* self, int player, int tolerance)
+void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* bestWalls)
 {
     int nbrList = 0;
-    ListQuor* list = ListQuor_create();
 
 	const int gridSize = self->gridSize;
 	const int otherPlayer = player ^ 1;
 	
-    QuoridorWall bestWall; 
-    bestWall.pos.i = -1; 
-    bestWall.pos.j = -1; 
-    bestWall.score = -1;
+    //QuoridorWall bestWall; 
+    //bestWall.pos.i = -1; 
+    //bestWall.pos.j = -1; 
+    //bestWall.score = -1;
     
     int longestEnemyWaySize, longesPlayerWaySize = -1;  
     int playerRatio, enemyRatio = 0;
     int gain = 0 ; 
 	int wallCount = 0;
 
-	QuoridorWall* bestWalls = (QuoridorWall*)calloc(sizeof(QuoridorWall), MAX_BEST_WALLS); // on initialise le tableau de 5 murs 
+	//QuoridorWall* bestWalls = (QuoridorWall*)calloc(sizeof(QuoridorWall), MAX_BEST_WALLS); // on initialise le tableau de 5 murs 
 
 	QuoridorPos* enemyPath = calloc(81, sizeof(QuoridorPos)); // on intialise un chemim maximum vide 
 	int enemySize = 0; // on initialise la taille a 0
@@ -649,7 +642,7 @@ QuoridorWall *getBestWall(QuoridorCore* self, int player, int tolerance)
                     }
 
                 }
-         }
+            }
 			
 		}
 	}
@@ -658,8 +651,5 @@ QuoridorWall *getBestWall(QuoridorCore* self, int player, int tolerance)
 
     free(enemyPath);
     free(playerPath);
-
-    
-    return bestWalls; // on retourne la tableau de mur
-
+    return;
 }
