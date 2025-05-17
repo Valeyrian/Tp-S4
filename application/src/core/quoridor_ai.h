@@ -8,6 +8,7 @@
 
 #include "settings.h"
 #include "core/quoridor_core.h"
+#include "core/graph.h"
 
 /// @brief Crée les données utilisées par l'IA.
 /// @param core Instance du jeu Quoridor.
@@ -29,6 +30,7 @@ void AIData_reset(void *self);
 /// @param aiData Pointeur vers les données de l'IA.
 /// @return Le tour choisi par l'IA.
 QuoridorTurn QuoridorCore_computeTurn(QuoridorCore *self, int depth, void *aiData);
+Graph* QuoridorCore_initGraph(QuoridorCore* self, int playerID);
 
 /// @brief Calcule le plus court chemin entre la position du joueur et sa zone d'arrivée.
 /// @param self Instance du jeu Quoridor.
@@ -38,14 +40,14 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore *self, int depth, void *aiDat
 ///     et la position actuelle du joueur à l'indice (size - 1).
 /// @param size Adresse d'un entier dans lequel sera écrite la taille du chemin.
 ///     La distance est alors égale à (size - 1).
-void QuoridorCore_getShortestPath(QuoridorCore *self, int playerID, QuoridorPos *path, int *size);
+void QuoridorCore_getShortestPath(QuoridorCore *self, int playerID, QuoridorPos *path, int *size,Graph* graph);
 
 /// @brief Fonction spécifique à l'évaluation sur Moodle.
 /// Calcule le coup joué par l'IA avec une profondeur de 2.
 /// @param self Instance du jeu Quoridor.
 /// @param aiData Pointeur vers les données de l'IA.
 /// @return Le tour choisi par l'IA.
-INLINE QuoridorTurn QuoridorCore_computeMoodleTurn(QuoridorCore *self, void *aiData)
+INLINE QuoridorTurn QuoridorCore_computeMoodleTurn(QuoridorCore* self, void* aiData)
 {
     const int depth = 2;
     return QuoridorCore_computeTurn(self, depth, aiData);
@@ -53,3 +55,4 @@ INLINE QuoridorTurn QuoridorCore_computeMoodleTurn(QuoridorCore *self, void *aiD
 
 
 QuoridorWall getBestWall(QuoridorCore* self, int player, int tolerance);
+

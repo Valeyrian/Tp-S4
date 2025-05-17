@@ -52,6 +52,7 @@ Graph* QuoridorCore_initGraph(QuoridorCore* self, int playerID)
         }
     return graph;
 }
+
 void QuoridorCore_getShortestPath(QuoridorCore* self, int playerID, QuoridorPos* path, int* size, Graph* graph)
 {
 
@@ -60,7 +61,7 @@ void QuoridorCore_getShortestPath(QuoridorCore* self, int playerID, QuoridorPos*
     if (playerID == 1)
         for (int j = 0; j < 9; j++)
         {
-            Path* path = Graph_shortestPath(graph, self->positions[playerID].i * 9 + self->positions[playerID].j, j * 9);
+            Path* path = Graph_shortestPath(graph,  self->positions[playerID].i * 9 + self->positions[playerID].j,j * 9);
             if (!path)
                 continue;
             if (path->distance < min)
@@ -82,11 +83,13 @@ void QuoridorCore_getShortestPath(QuoridorCore* self, int playerID, QuoridorPos*
                 bestpath = path;
             }
         }
+
     *size = bestpath->distance + 1;
     int idx = 0;
     while (!ListInt_isEmpty(bestpath->list))
     {
         int tmp = ListInt_popLast(bestpath->list);
+
 
         path[idx].i = (tmp - tmp % 9) / 9;
         path[idx++].j = tmp % 9;
@@ -94,10 +97,9 @@ void QuoridorCore_getShortestPath(QuoridorCore* self, int playerID, QuoridorPos*
 
 
     }
-    //  printf("score = %.2f\n", QuoridorCore_computeScore(self, self->playerID));
 
-      // TODO
 }
+
 
 
 /// @brief Calcule une heuristique d'évaluation de l'état du jeu pour un joueur donné.
@@ -112,9 +114,29 @@ static float QuoridorCore_computeScore(QuoridorCore *self, int playerID)
     int playerA = playerID;
     int playerB = playerID ^ 1;
 
-    // TODO
+    // 1. Calculer la distance (chemin le plus court) vers la ligne de but
+    QuoridorPos path[MAX_PATH_LEN];
+    int distA = 0;
+    int distB = 0;
+    Graph *graph = QuoridorCore_initGraph(self, playerA);
+    QuoridorCore_getShortestPath(self, playerA, path, &distA,graph);
+    Graph* graph2 = QuoridorCore_initGraph(self, playerB);
+    QuoridorCore_getShortestPath(self, playerB, path, &distB,graph2);
+    printf("aa");
+    Graph_destroy(graph);
+    Graph_destroy(graph2);
+    // 2. Ajouter pondération sur le nombre de murs restants (optionnel mais utile)
+    int wallsA = self->wallCounts[playerA];
+    int wallsB = self->wallCounts[playerB];
+    
+    // Pondérer les murs à petite échelle (ex : 0.5 par mur)
+    float score = (float)(distB - distA) + 0.3f * (wallsA - wallsB);
 
-    return 0.f + Float_randAB(-0.1f, +0.1f);
+    // 3. Ajouter un bruit aléatoire pour casser les égalités (pas obligatoire mais pratique)
+    //score += Float_randAB(-0.1f, +0.1f);
+
+    return score;
+
 }
 
 /// @brief Applique l'algorithme Min-Max (avec élagage alpha-bêta) pour déterminer le coup joué par l'IA.
@@ -140,6 +162,7 @@ static float QuoridorCore_minMax(
         return QuoridorCore_computeScore(self, playerID);
     }
 
+
     const int gridSize = self->gridSize;
     const int currI = self->positions[self->playerID].i;
     const int currJ = self->positions[self->playerID].j;
@@ -149,6 +172,26 @@ static float QuoridorCore_minMax(
     float value = maximizing ? -INFINITY : INFINITY;
 
     // TODO
+    QuoridorPos moves[8];
+
+    int moveCount = 0;
+    moveCount = QuoridorCore_getMoves(self, moves, self->positions[self->playerID], 1);
+    int max = -9999;
+    int Idmax = 0;
+    for (int k = 0; k < moveCount; k++)
+    {
+        QuoridorCore copy = *self;
+        copy.positions[playerID].i = moves[k].i;
+        copy.positions[playerID].j = moves[k].j;
+        float tmp = QuoridorCore_minMax(&copy, playerID ^ 1, currDepth + 1, maxDepth, 0, 0, 0);
+        if (tmp > max)
+        {
+            max = tmp;
+            Idmax = k;
+        }
+    }
+
+
 
     // Astuce :
     // vous devez effectuer toutes vos actions sur une copie du plateau courant.
@@ -170,7 +213,7 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore *self, int depth, void *aiDat
     float childValue = QuoridorCore_minMax(self, self->playerID, 0, depth, alpha, beta, &childTurn);
     return childTurn;
 }
-int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves, QuoridorPos pos)
+int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves, QuoridorPos pos, int player)
 {
     int Id = 0;
     const int gridSize = self->gridSize;
@@ -219,7 +262,8 @@ int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves, QuoridorPos po
         }
 
     }
-
+    if (!player)
+        return Id;
 
     /// ------------------------------------------------------------------------
     //ajoust ou non des coups du mouton

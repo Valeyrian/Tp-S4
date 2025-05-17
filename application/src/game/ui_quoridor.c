@@ -7,7 +7,7 @@
 #include "game/ui_quoridor.h"
 #include "game/game_common.h"
 #include "game/scene.h"
-
+#include "core/graph.h"
 static bool UIQuoridor_isPlayerTurn(UIQuoridor *self)
 {
     assert(self && "The UIQuoridor must be created");
@@ -345,7 +345,11 @@ void UIQuoridor_updatePageMain(UIQuoridor *self)
 
         QuoridorPos path[MAX_PATH_LEN];
         int size = 0;
-        QuoridorCore_getShortestPath(core, i, path, &size);
+
+        Graph* graph = QuoridorCore_initGraph(core, i);
+        QuoridorCore_getShortestPath(core, i, path, &size,graph);
+
+
         sprintf(buffer, "%d", size - 1);
         Text_setString(self->m_textDistances[i], buffer);
     }
