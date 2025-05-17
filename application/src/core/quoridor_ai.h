@@ -53,3 +53,6 @@ INLINE QuoridorTurn QuoridorCore_computeMoodleTurn(QuoridorCore* self, void* aiD
     return QuoridorCore_computeTurn(self, depth, aiData);
 }
 
+
+QuoridorWall getBestWall(QuoridorCore* self, int player, int tolerance);
+

@@ -349,6 +349,7 @@ void UIQuoridor_updatePageMain(UIQuoridor *self)
         Graph* graph = QuoridorCore_initGraph(core, i);
         QuoridorCore_getShortestPath(core, i, path, &size,graph);
 
+
         sprintf(buffer, "%d", size - 1);
         Text_setString(self->m_textDistances[i], buffer);
     }
