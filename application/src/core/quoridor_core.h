@@ -60,6 +60,17 @@ typedef struct QuoridorPos
     int j;
 } QuoridorPos;
 
+
+//// @brief Représente un mur sur le plateau de Quoridor.
+typedef struct QuoridorWall
+{
+	/// @brief Type de mur (horizontal ou vertical).
+	WallType type;
+    QuoridorPos pos;
+    int score;
+} QuoridorWall;
+
+
 /// @brief Représente l'état complet du jeu Quoridor.
 typedef struct QuoridorCore
 {

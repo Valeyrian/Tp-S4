@@ -25,7 +25,7 @@ void AIData_reset(void *self)
 {
 }
 
-void QuoridorCore_getShortestPath(QuoridorCore *self, int playerID, QuoridorPos *path, int *size)
+Graph* QuoridorCore_initGraph(QuoridorCore* self, int playerID)
 {
 
     Graph* graph = Graph_create(81);
@@ -37,17 +37,27 @@ void QuoridorCore_getShortestPath(QuoridorCore *self, int playerID, QuoridorPos 
             QuoridorPos pos;
             pos.i = i;
             pos.j = j;
-            int moveCount = QuoridorCore_getMoves(self, moves, pos);
+            int moveCount = 0;
+            if (self->positions[playerID].i == pos.i && self->positions[playerID].j == pos.j)
+                moveCount = QuoridorCore_getMoves(self, moves, pos, 1);
+            else
+                moveCount = QuoridorCore_getMoves(self, moves, pos, 0);
+
 
             for (int k = 0; k < moveCount; k++)
             {
-                Graph_setArc(graph, pos.i*9+pos.j, moves[k].i * 9 + moves[k].j, 1);
+                Graph_setArc(graph, pos.i * 9 + pos.j, moves[k].i * 9 + moves[k].j, 1);
+                Graph_setArc(graph, moves[k].i * 9 + moves[k].j, pos.i * 9 + pos.j, 1);
             }
         }
-    
+    return graph;
+}
+void QuoridorCore_getShortestPath(QuoridorCore* self, int playerID, QuoridorPos* path, int* size, Graph* graph)
+{
+
     int min = INT_MAX;
     Path* bestpath;
-    if(playerID == 1)
+    if (playerID == 1)
         for (int j = 0; j < 9; j++)
         {
             Path* path = Graph_shortestPath(graph, self->positions[playerID].i * 9 + self->positions[playerID].j, j * 9);
@@ -72,21 +82,22 @@ void QuoridorCore_getShortestPath(QuoridorCore *self, int playerID, QuoridorPos 
                 bestpath = path;
             }
         }
-    *size = bestpath->distance;
+    *size = bestpath->distance + 1;
     int idx = 0;
     while (!ListInt_isEmpty(bestpath->list))
     {
         int tmp = ListInt_popLast(bestpath->list);
 
-        path[idx++].i = (tmp - tmp%9) / 9;
-        path[idx++].j = tmp%9;
+        path[idx].i = (tmp - tmp % 9) / 9;
+        path[idx++].j = tmp % 9;
 
-                
+
 
     }
-    // TODO
-}
+    //  printf("score = %.2f\n", QuoridorCore_computeScore(self, self->playerID));
 
+      // TODO
+}
 
 
 /// @brief Calcule une heuristique d'évaluation de l'état du jeu pour un joueur donné.
@@ -349,4 +360,116 @@ int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves, QuoridorPos po
     }
     return Id;
 
+}
+
+
+
+QuoridorWall *getBestWall(QuoridorCore* self, int player, int tolerance)
+{
+	const int gridSize = self->gridSize;
+	const int otherPlayer = player ^ 1;
+	
+    QuoridorWall bestWall; 
+    bestWall.pos.i = -1; 
+    bestWall.pos.j = -1; 
+    bestWall.score = -1;
+    
+    int longestEnemyWaySize, longesPlayerWaySize = -1;  
+    int playerRatio, enemyRatio = 0;
+    int gain = 0 ; 
+    int gainMax = INT_MIN;
+
+	QuoridorWall* bestFiveWall = (QuoridorWall*)calloc(sizeof(QuoridorWall), 5); // on initialise le tableau de 5 murs 
+
+	QuoridorPos* enemyPath = calloc(81, sizeof(QuoridorPos)); // on intialise un chemim maximum vide 
+	int enemySize = 0; // on initialise la taille a 0
+    
+    QuoridorPos* playerPath = calloc(81, sizeof(QuoridorPos)); // on intialise un chemim maximum vide
+	int playerSize = 0; // on initialise la taille a 0
+
+    QuoridorPos* tempPath = calloc(81, sizeof(QuoridorPos)); // on intialise un chemim maximum vide 
+	int actualPlayerSize, actualEnemySize = 0; 
+
+	Graph* playerGraph = QuoridorCore_initGraph(self, player); // on initialise le graphe du joueur en cours 
+	QuoridorCore_getShortestPath(self, player, tempPath, &actualPlayerSize, playerGraph); // on recupere la taille du plus court chemin
+    Graph_destroy(playerGraph);
+
+	Graph* enemyGraph = QuoridorCore_initGraph(self, otherPlayer); // on initialise le graphe de l'autre joueur 
+	QuoridorCore_getShortestPath(self, otherPlayer, tempPath, &actualEnemySize, enemyGraph); // on recupere la taille du plus court chemin 
+	Graph_destroy(enemyGraph); 
+
+    free(tempPath); 
+    
+
+	for (int i = 0; i < gridSize - 1 ; i++)
+    {
+        for (int j = 0; j < gridSize - 1 ; j++)
+        {
+            for (int type = 0 ; type < 2 ; type++)
+            {
+
+                if (!QuoridorCore_canPlayWall(self, type, i, j))
+                    continue;
+
+                Graph* enenemyGraph = QuoridorCore_initGraph(self, otherPlayer); 
+                Graph* playerGraph = QuoridorCore_initGraph(self, player); // on initialise le graphe du joueur ennemi et du joueur
+
+                if (type == WALL_TYPE_HORIZONTAL) 
+                {
+					Graph_removeArc(enenemyGraph, i * 9 + j, (i + 1) * 9 + j); //on retire les arc aller retour des deux case 4 cases concernées pour le jouer enemis 
+                    Graph_removeArc(enenemyGraph, (i + 1) * 9 + j, i * 9 + j);
+                    Graph_removeArc(enenemyGraph, i * 9 + (j + 1), (i + 1) * 9 + (j + 1));
+                    Graph_removeArc(enenemyGraph, (i + 1) * 9 + (j + 1), i * 9 + (j + 1));
+                    
+                    Graph_removeArc(playerGraph, i * 9 + j, (i + 1) * 9 + j); //on retire les arc aller retour des deux case 4 cases concernées pour le joueur en cours
+                    Graph_removeArc(playerGraph, (i + 1) * 9 + j, i * 9 + j);
+                    Graph_removeArc(playerGraph, i * 9 + (j + 1), (i + 1) * 9 + (j + 1));
+                    Graph_removeArc(playerGraph, (i + 1) * 9 + (j + 1), i * 9 + (j + 1));
+
+
+                }
+                else 
+                {
+                    Graph_removeArc(enenemyGraph, i * 9 + j, i * 9 + (j + 1)); //on retire les arc aller retour des deux case 4 cases concernées ppur le joueur enemis
+                    Graph_removeArc(enenemyGraph, i * 9 + (j + 1), i * 9 + j);
+                    Graph_removeArc(enenemyGraph, (i + 1) * 9 + j, (i + 1) * 9 + (j + 1));
+                    Graph_removeArc(enenemyGraph, (i + 1) * 9 + (j + 1), (i + 1) * 9 + j);
+                    
+                    Graph_removeArc(playerGraph, i * 9 + j, i * 9 + (j + 1)); //on retire les arc aller retour des deux case 4 cases concernées ppur le joueur en cours
+                    Graph_removeArc(playerGraph, i * 9 + (j + 1), i * 9 + j);
+                    Graph_removeArc(playerGraph, (i + 1) * 9 + j, (i + 1) * 9 + (j + 1));
+                    Graph_removeArc(playerGraph, (i + 1) * 9 + (j + 1), (i + 1) * 9 + j);
+                }
+
+                QuoridorCore_getShortestPath(self, otherPlayer, enemyPath, &enemySize, enenemyGraph);
+				QuoridorCore_getShortestPath(self, player, playerPath, &playerSize, playerGraph); 
+
+                Graph_destroy(enenemyGraph); 
+				Graph_destroy(playerGraph);  
+
+				
+                
+				playerRatio = playerSize - actualPlayerSize  ; //le nombre de case en + pour le joeur
+				enemyRatio = enemySize - actualEnemySize ;    // le nombre de cases  en + pour l enemy
+               
+				gain = playerRatio - enemyRatio;  // on fait la diff des deux ratio pour savoir si rentable
+
+                if (playerRatio < tolerance && enemyRatio > 0)
+                {
+                    if (gain > gainMax)
+                    {
+						gainMax = gain; 
+						bestWall.type = type; 
+						bestWall.pos.i = i; 
+						bestWall.pos.j = j; 
+                        bestWall.score = gain; 
+                    }
+                }
+            }
+			
+		}
+	}
+    free(enemyPath);
+    free(playerPath);
+    return bestFiveWall; 
 }
