@@ -1,11 +1,14 @@
 #include <stdlib.h>
 #include "listquor.h"
 
-void init_list(ListQuor* list) {
+ListQuor* ListQuor_create() {
+    ListQuor* list = (ListQuor*)malloc(sizeof(ListQuor));
+    if (!list) return NULL;
     list->head = NULL;
+    return list;
 }
 
-void insert(ListQuor* list, QuoridorWall wall) {
+void ListQuor_insert(ListQuor* list, QuoridorWall wall) {
     NodeQuor* new_node = (NodeQuor*)malloc(sizeof(NodeQuor));
     if (!new_node) return;
 
@@ -27,7 +30,8 @@ void insert(ListQuor* list, QuoridorWall wall) {
     current->next = new_node;
 }
 
-QuoridorWall pop_first(ListQuor* list) {
+QuoridorWall ListQuor_pop_first(ListQuor* list) {
+  
     NodeQuor* temp = list->head;
     QuoridorWall wall = temp->wall;
     list->head = temp->next;
@@ -35,7 +39,7 @@ QuoridorWall pop_first(ListQuor* list) {
     return wall;
 }
 
-void free_list(ListQuor* list) {
+void ListQuor_free(ListQuor* list) {
     NodeQuor* current = list->head;
     while (current) {
         NodeQuor* next = current->next;
@@ -44,7 +48,7 @@ void free_list(ListQuor* list) {
     }
     list->head = NULL;
 }
-QuoridorWall pop_last(ListQuor* list) {
+QuoridorWall ListQuor_pop_last(ListQuor* list) {
 
     NodeQuor* current = list->head;
     while (current->next->next) {
