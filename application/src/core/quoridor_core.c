@@ -131,6 +131,14 @@ bool QuoridorCore_canPlayWall(QuoridorCore *self, WallType type, int i, int j)
 
 void QuoridorCore_updateValidMoves(QuoridorCore *self)
 {
+    QuoridorPos* path = calloc(81, sizeof(QuoridorPos));
+    int size;
+    QuoridorCore_getShortestPath(self, self->playerID, path, &size);
+    for (int i = 0; i < size; i++)
+    {
+        printf(".i = %d, .j = %d\t", path[i].i, path[i].j);
+    }
+    printf("\n");
     const int gridSize = self->gridSize;
     const int currI = self->positions[self->playerID].i;
     const int currJ = self->positions[self->playerID].j;

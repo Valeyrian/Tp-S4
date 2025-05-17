@@ -7,7 +7,7 @@
 #pragma once
 
 #include "settings.h"
-
+#include "core/quoridor_core.h"
 typedef struct Graph Graph;
 typedef struct GraphNode GraphNode;
 typedef struct ArcList ArcList;
