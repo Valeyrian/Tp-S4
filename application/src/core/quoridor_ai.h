@@ -8,9 +8,9 @@
 
 #include "settings.h"
 #include "core/quoridor_core.h"
+#include "core/utils.h"
 #include "core/graph.h"
-#include "core/listQuor.h"
-
+#include "core/shortest_path.h"
 /// @brief Crée les données utilisées par l'IA.
 /// @param core Instance du jeu Quoridor.
 /// @return Pointeur vers les données de l'IA créées.
@@ -32,6 +32,7 @@ void AIData_reset(void *self);
 /// @return Le tour choisi par l'IA.
 QuoridorTurn QuoridorCore_computeTurn(QuoridorCore *self, int depth, void *aiData);
 Graph* QuoridorCore_initGraph(QuoridorCore* self, int playerID);
+void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* bestWalls);
 
 /// @brief Calcule le plus court chemin entre la position du joueur et sa zone d'arrivée.
 /// @param self Instance du jeu Quoridor.
@@ -51,9 +52,8 @@ void QuoridorCore_getShortestPath(QuoridorCore *self, int playerID, QuoridorPos 
 INLINE QuoridorTurn QuoridorCore_computeMoodleTurn(QuoridorCore* self, void* aiData)
 {
     const int depth = 2;
-    return QuoridorCore_computeTurn(self, depth, aiData);
+    return QuoridorCore_computeTurn(self, 0, aiData);
 }
 
 
-ListQuor* getBestWall(QuoridorCore* self, int player, int tolerance);
 

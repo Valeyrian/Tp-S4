@@ -95,7 +95,7 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
                     if (QuoridorCore_canPlayWall(core, WALL_TYPE_HORIZONTAL, i, j))
                     {
                         QuoridorCore_playWall(core, WALL_TYPE_HORIZONTAL, i, j);
-                        QuoridorCore_print(core);
+                        //QuoridorCore_print(core);
                     }
                 }
                 if (FRect_containsPoint(&(self->m_rectMouseVWalls[i][j]), mousePos))
@@ -103,7 +103,7 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
                     if (QuoridorCore_canPlayWall(core, WALL_TYPE_VERTICAL, i, j))
                     {
                         QuoridorCore_playWall(core, WALL_TYPE_VERTICAL, i, j);
-                        QuoridorCore_print(core);
+                        //QuoridorCore_print(core);
                     }
                 }
             }
