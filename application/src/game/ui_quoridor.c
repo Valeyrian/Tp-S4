@@ -345,7 +345,7 @@ void UIQuoridor_updatePageMain(UIQuoridor *self)
 
         QuoridorPos path[MAX_PATH_LEN];
         int size = 0;
-        //QuoridorCore_getShortestPath(core, i, path, &size);
+        QuoridorCore_getShortestPath(core, i, path, &size);
         sprintf(buffer, "%d", size - 1);
         Text_setString(self->m_textDistances[i], buffer);
     }
