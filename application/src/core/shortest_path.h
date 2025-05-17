@@ -8,7 +8,7 @@
 
 #include "settings.h"
 #include "graph.h"
-
+#include "list_int.h"
 /// @brief Structure représentant un chemin dans un graphe.
 typedef struct Path
 {

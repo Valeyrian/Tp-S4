@@ -7,6 +7,7 @@
 #include "core/quoridor_core.h"
 #include "core/utils.h"
 #include "core/graph.h"
+#include "core/shortest_path.h"
 
 void *AIData_create(QuoridorCore *core)
 {
@@ -26,16 +27,63 @@ void AIData_reset(void *self)
 
 void QuoridorCore_getShortestPath(QuoridorCore *self, int playerID, QuoridorPos *path, int *size)
 {
-    *size = 0;
+
     Graph* graph = Graph_create(81);
-    for (int i = 0; i < 81; i++)
+    for (int i = 0; i < 9; i++)
+        for (int j = 0; j < 9; j++)
+        {
+
+            QuoridorPos moves[8];
+            QuoridorPos pos;
+            pos.i = i;
+            pos.j = j;
+            int moveCount = QuoridorCore_getMoves(self, moves, pos);
+
+            for (int k = 0; k < moveCount; k++)
+            {
+                Graph_setArc(graph, pos.i*9+pos.j, moves[k].i * 9 + moves[k].j, 1);
+            }
+        }
+    
+    int min = INT_MAX;
+    Path* bestpath;
+    if(playerID == 1)
+        for (int j = 0; j < 9; j++)
+        {
+            Path* path = Graph_shortestPath(graph, self->positions[playerID].i * 9 + self->positions[playerID].j, j * 9);
+            if (!path)
+                continue;
+            if (path->distance < min)
+            {
+                min = path->distance;
+                bestpath = path;
+            }
+        }
+
+    if (playerID == 0)
+        for (int j = 0; j < 9; j++)
+        {
+            Path* path = Graph_shortestPath(graph, self->positions[playerID].i * 9 + self->positions[playerID].j, j * 9 + 8);
+            if (!path)
+                continue;
+            if (path->distance < min)
+            {
+                min = path->distance;
+                bestpath = path;
+            }
+        }
+    *size = bestpath->distance;
+    int idx = 0;
+    while (!ListInt_isEmpty(bestpath->list))
     {
-        QuoridorPos moves[8];
-        int moveCount = QuoridorCore_getMoves(self, moves);
+        int tmp = ListInt_popLast(bestpath->list);
 
-        for(int j= ;j)
+        path[idx++].i = (tmp - tmp%9) / 9;
+        path[idx++].j = tmp%9;
+
+                
+
     }
-
     // TODO
 }
 
@@ -111,22 +159,16 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore *self, int depth, void *aiDat
     float childValue = QuoridorCore_minMax(self, self->playerID, 0, depth, alpha, beta, &childTurn);
     return childTurn;
 }
-int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves)
+int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves, QuoridorPos pos)
 {
     int Id = 0;
     const int gridSize = self->gridSize;
-    const int currI = self->positions[self->playerID].i;
-    const int currJ = self->positions[self->playerID].j;
+    const int currI = pos.i;
+    const int currJ = pos.j;
     const int otherI = self->positions[self->playerID ^ 1].i;
     const int otherJ = self->positions[self->playerID ^ 1].j;
 
-    for (int i = 0; i < MAX_GRID_SIZE; i++)
-    {
-        for (int j = 0; j < MAX_GRID_SIZE; j++)
-        {
-            self->isValid[i][j] = false;
-        }
-    }
+
 
     //ajoute ou non des 4 cases voisines
 
@@ -134,7 +176,6 @@ int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves)
     {
         if (!(currI - 1 == otherI && currJ == otherJ))
         {
-            self->isValid[currI - 1][currJ] = true;
             moves[Id].i = currI - 1;
             moves[Id++].j = currJ;
 
@@ -145,7 +186,6 @@ int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves)
     {
         if (!(currI + 1 == otherI && currJ == otherJ))
         {
-            self->isValid[currI + 1][currJ] = true;
             moves[Id].i = currI + 1;
             moves[Id++].j = currJ;
         }
@@ -154,7 +194,6 @@ int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves)
     {
         if (!(currI == otherI && currJ - 1 == otherJ))
         {
-            self->isValid[currI][currJ - 1] = true;
             moves[Id].i = currI;
             moves[Id++].j = currJ - 1;
         }
@@ -164,7 +203,6 @@ int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves)
     {
         if (!(currI == otherI && currJ + 1 == otherJ))
         {
-            self->isValid[currI][currJ + 1] = true;
             moves[Id].i = currI;
             moves[Id++].j = currJ + 1;
         }
@@ -181,7 +219,8 @@ int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves)
         {
             if (!QuoridorCore_hasWallAbove(self, currI, currJ) && !QuoridorCore_hasWallAbove(self, otherI, currJ))
             {
-                self->isValid[otherI - 1][currJ] = true;
+                moves[Id].i = otherI - 1;
+                moves[Id++].j = currJ;
             }
         }
     }
@@ -192,7 +231,8 @@ int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves)
         {
             if (!QuoridorCore_hasWallBelow(self, currI, currJ) && !QuoridorCore_hasWallBelow(self, otherI, currJ))
             {
-                self->isValid[otherI + 1][currJ] = true;
+                moves[Id].i = otherI + 1;
+                moves[Id++].j = currJ;
             }
         }
     }
@@ -203,7 +243,8 @@ int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves)
         {
             if (!QuoridorCore_hasWallLeft(self, currI, currJ) && !QuoridorCore_hasWallLeft(self, otherI, otherJ))
             {
-                self->isValid[currI][otherJ - 1] = true;
+                moves[Id].i = currI;
+                moves[Id++].j = otherJ - 1;
             }
         }
     }
@@ -214,7 +255,8 @@ int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves)
         {
             if (!QuoridorCore_hasWallRight(self, currI, currJ) && !QuoridorCore_hasWallRight(self, otherI, otherJ))
             {
-                self->isValid[currI][otherJ + 1] = true;
+                moves[Id].i = currI;
+                moves[Id++].j = otherJ + 1;
             }
         }
     }
@@ -232,11 +274,13 @@ int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves)
             {
                 if (!QuoridorCore_hasWallLeft(self, otherI, otherJ) && otherJ > 0)
                 {
-                    self->isValid[otherI][otherJ - 1] = true;
+                    moves[Id].i = otherI;
+                    moves[Id++].j = otherJ - 1;
                 }
                 if (!QuoridorCore_hasWallRight(self, otherI, otherJ) && otherJ < gridSize - 1)
                 {
-                    self->isValid[otherI][otherJ + 1] = true;
+                    moves[Id].i = otherI;
+                    moves[Id++].j = otherJ + 1;
                 }
             }
         }
@@ -250,11 +294,13 @@ int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves)
             {
                 if (!QuoridorCore_hasWallLeft(self, otherI, otherJ) && otherJ > 0)
                 {
-                    self->isValid[otherI][otherJ - 1] = true;
+                    moves[Id].i = otherI;
+                    moves[Id++].j = otherJ - 1;
                 }
                 if (!QuoridorCore_hasWallRight(self, otherI, otherJ) && otherJ < gridSize - 1)
                 {
-                    self->isValid[otherI][otherJ + 1] = true;
+                    moves[Id].i = otherI;
+                    moves[Id++].j = otherJ + 1;
                 }
             }
         }
@@ -268,11 +314,13 @@ int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves)
             {
                 if (!QuoridorCore_hasWallAbove(self, otherI, otherJ) && otherI > 0)
                 {
-                    self->isValid[otherI - 1][otherJ] = true;
+                    moves[Id].i = otherI - 1;
+                    moves[Id++].j = otherJ;
                 }
                 if (!QuoridorCore_hasWallBelow(self, otherI, otherJ) && otherI < gridSize - 1)
                 {
-                    self->isValid[otherI + 1][otherJ] = true;
+                    moves[Id].i = otherI + 1;
+                    moves[Id++].j = otherJ;
                 }
             }
 
@@ -288,11 +336,13 @@ int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves)
             {
                 if (!QuoridorCore_hasWallAbove(self, otherI, otherJ) && otherI > 0)
                 {
-                    self->isValid[otherI - 1][otherJ] = true;
+                    moves[Id].i = otherI - 1;
+                    moves[Id++].j = otherJ;
                 }
                 if (!QuoridorCore_hasWallBelow(self, otherI, otherJ) && otherI < gridSize - 1)
                 {
-                    self->isValid[otherI + 1][otherJ] = true;
+                    moves[Id].i = otherI + 1;
+                    moves[Id++].j = otherJ;
                 }
             }
         }
