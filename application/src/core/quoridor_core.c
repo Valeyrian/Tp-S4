@@ -85,13 +85,13 @@ bool QuoridorCore_canPlayWall(QuoridorCore *self, WallType type, int i, int j)
     {
         if (j > 0 && self->hWalls[i][j] != WALL_STATE_NONE) return false; 
         if (j < self->gridSize - 2 && self->hWalls[i][j + 1] != WALL_STATE_NONE) return false; 
-		if (i > 0 && self->vWalls[i][j] == WALL_STATE_START) return false;
+		if (self->vWalls[i][j] == WALL_STATE_START) return false;
     }
     else if (type == WALL_TYPE_VERTICAL) 
     {
         if (i > 0 && self->vWalls[i][j] != WALL_STATE_NONE) return false; 
         if (i < self->gridSize - 2 && self->vWalls[i + 1][j] != WALL_STATE_NONE) return false; 
-		if (j > 0 && self->hWalls[i][j] == WALL_STATE_START) return false;
+		if (self->hWalls[i][j] == WALL_STATE_START) return false;
     }
     
     // on les pause potentielement temporairement
@@ -133,7 +133,8 @@ void QuoridorCore_updateValidMoves(QuoridorCore *self)
 {
     QuoridorPos* path = calloc(81, sizeof(QuoridorPos));
     int size;
-    QuoridorCore_getShortestPath(self, self->playerID, path, &size);
+    Graph* graph = QuoridorCore_initGraph(self, self->playerID);
+    QuoridorCore_getShortestPath(self, self->playerID, path, &size,graph);
     for (int i = 0; i < size; i++)
     {
         printf("(%d,%d) -> ", path[i].i, path[i].j);
@@ -498,11 +499,11 @@ void QuoridorCore_moveTo(QuoridorCore *self, int i, int j)
 	self->positions[self->playerID].i = i;
 	self->positions[self->playerID].j = j;
 
-	if (self->playerID == 0 && i == self->gridSize - 1) // joueur 0 a gagné   
+	if (self->playerID == 0 && j == self->gridSize - 1) // joueur 0 a gagné   
 	{
 		self->state = QUORIDOR_STATE_P0_WON; 
 	}
-	else if (self->playerID == 1 && i == 0) // joueur 1 a gagné
+	else if (self->playerID == 1 && j == 0) // joueur 1 a gagné
 	{
 		self->state = QUORIDOR_STATE_P1_WON; 
 	}
