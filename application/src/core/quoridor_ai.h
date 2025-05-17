@@ -9,6 +9,7 @@
 #include "settings.h"
 #include "core/quoridor_core.h"
 #include "core/graph.h"
+#include "core/listQuor.h"
 
 /// @brief Crée les données utilisées par l'IA.
 /// @param core Instance du jeu Quoridor.
@@ -54,5 +55,5 @@ INLINE QuoridorTurn QuoridorCore_computeMoodleTurn(QuoridorCore* self, void* aiD
 }
 
 
-QuoridorWall getBestWall(QuoridorCore* self, int player, int tolerance);
+ListQuor* getBestWall(QuoridorCore* self, int player, int tolerance);
 
