@@ -862,7 +862,6 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 	AStarShortestPath(self, playerGraph, player, playerPath, &actualPlayerSize);  // on recupere la taille du plus court chemin avec l'algorithme A*
 	
 	//QuoridorCore_getShortestPath(self, otherPlayer, tempPath, &actualEnemySize, enemyGraph); // on recupere la taille du plus court chemin 
-	
 
 	AStarShortestPath(self, enemyGraph, otherPlayer, enemyPath, &actualEnemySize);   // on recupere la taille du plus court chemin avec l'algorithme A*
 
