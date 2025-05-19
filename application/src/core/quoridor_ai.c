@@ -10,7 +10,7 @@
 #include "core/shortest_path.h"
 #include "core/quoridor_ai.h"
 
-#define MAX_BEST_WALLS 5
+#define MAX_BEST_WALLS 1
 
 void* AIData_create(QuoridorCore* core)
 {
@@ -117,10 +117,12 @@ int extractLowestF(bool* inOpenSet, int* fScore, int size)
 /// chokbar c'est pas recursif
 void AStarShortestPath(QuoridorCore *self ,Graph* graph, int player, QuoridorPos* path, int* pathSize) 
 {
-	
-	//printf("A* \n"); 
+
 
 	int start = self->positions[player].i * self->gridSize + self->positions[player].j; // position de depart du joueur  
+
+	int start = self->positions[player].i * self->gridSize + self->positions[player].j; // position de depart du joueur 
+
 	
 	int boardLength = self->gridSize * self->gridSize; 
 
@@ -264,17 +266,21 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
 	QuoridorPos path[MAX_PATH_LEN];
 	int distA = 0;
 	int distB = 0;
-	Graph* graph = QuoridorCore_initGraph(self, playerA);
-	//QuoridorCore_getShortestPath(self, playerA, path, &distA, graph);
-	AStarShortestPath(self, graph, playerA, path, &distA); 
+	//Graph* graph = QuoridorCore_initGraph(self, playerA);
+	//////QuoridorCore_getShortestPath(self, playerA, path, &distA, graph);
+	//AStarShortestPath(self, graph, playerA, path, &distA); 
 
-	Graph* graph2 = QuoridorCore_initGraph(self, playerB);
-	//QuoridorCore_getShortestPath(self, playerB, path, &distB, graph2);
-	AStarShortestPath(self, graph2, playerB, path, &distB); 
-	
-	Graph_destroy(graph);
-	Graph_destroy(graph2);
-  
+	//Graph* graph2 = QuoridorCore_initGraph(self, playerB);
+	////QuoridorCore_getShortestPath(self, playerB, path, &distB, graph2);
+	//AStarShortestPath(self, graph2, playerB, path, &distB); 
+	//
+	//Graph_destroy(graph);
+	//Graph_destroy(graph2);
+
+	QuoridorPos* tab = calloc(self->gridSize * self->gridSize, sizeof(QuoridorPos));
+	distA = BFS_search2(self, playerA, tab);
+	distB = BFS_search2(self, playerB, tab);
+
   /*
     ListQuor* list = BFS_search(self, playerA);
     distA = ListQuor_size(list);
@@ -292,7 +298,9 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
 	float score = (float)(distB - distA);// +0.3f * (wallsA - wallsB);
 
 	// 3. Ajouter un bruit aléatoire pour casser les égalités (pas obligatoire mais pratique)
-	//score += Float_randAB(-0.3f, +0.3f); 
+
+	//score += Float_randAB(-0.2f, +0.2f); 
+
 
 	return score;
 
@@ -456,11 +464,11 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
             turn->j = walls[best].pos.j;
         }
     }
-    //// Astuce :
-    //// vous devez effectuer toutes vos actions sur une copie du plateau courant.
-    //// Comme la structure QuoridorCore ne contient aucune allocation interne,
-    //// la copie s'éffectue simplement avec :
-    //// QuoridorCore gameCopy = *self;
+    ////// Astuce :
+    ////// vous devez effectuer toutes vos actions sur une copie du plateau courant.
+    ////// Comme la structure QuoridorCore ne contient aucune allocation interne,
+    ////// la copie s'éffectue simplement avec :
+    ////// QuoridorCore gameCopy = *self;
     free(walls);
 
     return value;
@@ -475,7 +483,7 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 
   const float alpha = -INFINITY;
   const float beta = INFINITY;
-  float childValue = QuoridorCore_minMax(self, self->playerID, 0, 2, alpha, beta, &childTurn);
+  float childValue = QuoridorCore_minMax(self, self->playerID, 0, 6, alpha, beta, &childTurn);
   return childTurn;
 
 }
@@ -818,9 +826,11 @@ void collectFewWallsInFrontOfPath(QuoridorCore* self, QuoridorPos* path, int pat
 
 void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* bestWalls,int *wallCount,void *(wichWall)(QuoridorCore*,QuoridorPos*,int,QuoridorWall**,int*))
 {
+
 	if(self->wallCounts[player] == 0) // si le joueur n'a plus de mur
 		return;
 	int nbrList = 0; 
+
 
 	const int gridSize = self->gridSize;
 	const int otherPlayer = player ^ 1;
@@ -844,7 +854,9 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 	int playerSize = 0; // on initialise la taille a 0
 
 	
+
 	Graph* playerGraph = QuoridorCore_initGraph(self, player); // on initialise le graphe du joueur en cours 
+
 	Graph* enemyGraph = QuoridorCore_initGraph(self, otherPlayer); // on initialise le graphe de l'autre joueur 
 
 	// QuoridorCore_getShortestPath(self, player, tempPath, &actualPlayerSize, playerGraph); // on recupere la taille du plus court chemin
@@ -852,6 +864,7 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 	
 	//QuoridorCore_getShortestPath(self, otherPlayer, tempPath, &actualEnemySize, enemyGraph); // on recupere la taille du plus court chemin 
 	
+
 	AStarShortestPath(self, enemyGraph, otherPlayer, enemyPath, &actualEnemySize);   // on recupere la taille du plus court chemin avec l'algorithme A*
 
 	// ==> reupere les murs autour du chemin ennemi
@@ -979,7 +992,6 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 	free(enemyPath);
 	free(playerPath);
 	free(attemptingWalls);
-
 	return;
 }
 
@@ -1019,4 +1031,55 @@ ListQuor* BFS_search(QuoridorCore* self, int playerID)
         }
     }
     return NULL;
+}
+int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab)
+{
+
+	int* parent = calloc(self->gridSize * self->gridSize, sizeof(int));
+	int* explored = calloc(self->gridSize * self->gridSize, sizeof(int));
+	tab[0] = self->positions[playerID];
+	explored[0] = 1;
+	parent[0] = -1;
+	int start = 0, end = 1;
+	int nbr = 1;
+
+	int size = 0;
+
+	while (start < end)
+	{
+
+		int moveCount = 0;
+		QuoridorPos moves[8];
+
+		QuoridorPos position = tab[start++];
+
+
+		moveCount = QuoridorCore_getMoves(self, moves, position, nbr);
+		nbr = 0;
+
+		int tmp = start -1;
+		if ((playerID == 0 && position.j == self->gridSize - 1) ||
+			(playerID == 1 && position.j == 0)) {
+
+			while (tmp != -1)
+			{
+				//printf("(%d,%d) ", tab[tmp].i, tab[tmp].j);
+				size++;
+				tmp = parent[tmp];
+			}
+			return size-1;
+
+		}
+
+		for (int i = 0; i < moveCount; i++)
+		{
+			if (explored[moves[i].i * self->gridSize + moves[i].j] == 0)
+			{
+				tab[end] = moves[i];
+				parent[end++] = start - 1;
+				explored[moves[i].i * self->gridSize + moves[i].j] = 1;
+			}
+		}
+	}
+	return NULL;
 }
