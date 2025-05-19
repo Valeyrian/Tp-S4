@@ -661,29 +661,18 @@ int compareWalls(const void* a, const void* b)
 	return wb->score - wa->score; // tri décroissant
 }
 
-void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall** candidat, int* candidatCount)
+void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall* candidat, int* candidatCount)
 {
 	//tableau de 2  boolen pour savoir si les mur ont deja ete vus 
 	
-	bool*** seen = malloc(self->gridSize * sizeof(bool**)); 
+	bool seen[MAX_GRID_SIZE][MAX_GRID_SIZE][2] = { false }; // 2 types : horizontal / vertical}  
+
+
+	int maxCandidat = pathSize * 4; // 4 murs max par case	
 	
-	for (int i = 0; i < self->gridSize; i++) 
-	{
-		seen[i] = malloc(self->gridSize * sizeof(bool*)); 
-		
-		for (int j = 0; j < self->gridSize; j++)  
-		{
-			seen[i][j] = calloc(2, sizeof(bool)); // 2 types : horizontal / vertical
-		}
-	}
-
-	int maxCandidat = pathSize * 4; // 4 murs max par case
-
-	*candidat = calloc(sizeof(QuoridorWall), maxCandidat);   
 	*candidatCount = 0; 
 	
  
-
 	for (int k = 0; k < pathSize; k++)
 	{
 		int i = path[k].i;
@@ -691,84 +680,67 @@ void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize
 
 		if (i > 0 && !seen[i - 1][j][WALL_TYPE_HORIZONTAL]) // mur au dessus
 		{
-			(*candidat)[*candidatCount].pos.i = i - 1;
-			(*candidat)[*candidatCount].pos.j = j;
-			(*candidat)[*candidatCount].type = WALL_TYPE_HORIZONTAL;
+			candidat[*candidatCount].pos.i = i - 1;
+			candidat[*candidatCount].pos.j = j;
+			candidat[*candidatCount].type = WALL_TYPE_HORIZONTAL;
 			(*candidatCount)++;
 			seen[i - 1][j][WALL_TYPE_HORIZONTAL] = true;
 		}
 		if (i < self->gridSize - 1 && !seen[i + 1][j][WALL_TYPE_HORIZONTAL]) // mur en dessous
 		{
-			(*candidat)[*candidatCount].pos.i = i;
-			(*candidat)[*candidatCount].pos.j = j;
-			(*candidat)[*candidatCount].type = WALL_TYPE_HORIZONTAL;
+			candidat[*candidatCount].pos.i = i;
+			candidat[*candidatCount].pos.j = j;
+			candidat[*candidatCount].type = WALL_TYPE_HORIZONTAL;
 			(*candidatCount)++;
 			seen[i + 1][j][WALL_TYPE_HORIZONTAL] = true;
 		}
 		if (j > 0 && !seen[i][j - 1][WALL_TYPE_VERTICAL]) // mur a gauche
 		{
-			(*candidat)[*candidatCount].pos.i = i;
-			(*candidat)[*candidatCount].pos.j = j - 1;
-			(*candidat)[*candidatCount].type = WALL_TYPE_VERTICAL;
+			candidat[*candidatCount].pos.i = i;
+			candidat[*candidatCount].pos.j = j - 1;
+			candidat[*candidatCount].type = WALL_TYPE_VERTICAL;
 			(*candidatCount)++;
 			seen[i][j - 1][WALL_TYPE_VERTICAL] = true;
 		}
 		if (j < self->gridSize - 1 && !seen[i][j + 1][WALL_TYPE_VERTICAL]) // mur a droite
 		{
-			(*candidat)[*candidatCount].pos.i = i;
-			(*candidat)[*candidatCount].pos.j = j;
-			(*candidat)[*candidatCount].type = WALL_TYPE_VERTICAL;
+			candidat[*candidatCount].pos.i = i;
+			candidat[*candidatCount].pos.j = j;
+			candidat[*candidatCount].type = WALL_TYPE_VERTICAL;
 			(*candidatCount)++;
 			seen[i][j + 1][WALL_TYPE_VERTICAL] = true; 
 		}
 	}
 
-	for (int i = 0; i < self->gridSize; i++) 
-	{
-		for (int j = 0; j < self->gridSize; j++)
-		{
-			free(seen[i][j]); 
-		}
-		free(seen[i]); 
-	}
-	free(seen);
 	return;
 }
 
-void collectFewWallsInFrontOfPath(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall** candidat, int* candidatCount) //regarde les murs bien orient au debut du chemin
+void collectFewWallsInFrontOfPath(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall* candidat, int* candidatCount) //regarde les murs bien orient au debut du chemin
 {
-	const int maxWalls = 32;
-	const int maxSteps = min(pathSize - 1, 4); // examine les 3 premiere case 
-
-	*candidat = calloc(maxWalls, sizeof(QuoridorWall));
-	*candidatCount = 0;
+	int maxSteps = min(pathSize - 1, 4); // examine les 3 premiere case 
+	int maxWalls = 32; // nombre max de murs candidats 
 
 	
-	bool*** seen = malloc(self->gridSize * sizeof(bool**));
+	*candidatCount = 0;
 
-	for (int i = 0; i < self->gridSize; i++)
-	{
-		seen[i] = malloc(self->gridSize * sizeof(bool*));
-		for (int j = 0; j < self->gridSize; j++) 
-		{
-			seen[i][j] = calloc(2, sizeof(bool));
-		}
-	}
+
+	bool seen[MAX_GRID_SIZE][MAX_GRID_SIZE][2] = { false }; // 2 types : horizontal / vertical 
+
 
 	for (int k = 0; k < maxSteps && *candidatCount < maxWalls; k++) 
 	{
-		
-		int i = path[k].i;
-		int j = path[k].j;
-		int di = path[k + 1].i - i;
-		int dj = path[k + 1].j - j;
+		 
+		int i = path[k].i; 
+		int j = path[k].j; 
+		int di = path[k + 1].i - i; 
+		int dj = path[k + 1].j - j; 
 
 		// Mouvement vertical doncc candidat mur horizontal
 		if (di != 0 && i > 0 && !seen[i - 1][j][WALL_TYPE_HORIZONTAL]) 
 		{
-			(*candidat)[*candidatCount].type = WALL_TYPE_HORIZONTAL;
-			(*candidat)[*candidatCount].pos.i = i - 1;
-			(*candidat)[*candidatCount].pos.j = j;
+			candidat[*candidatCount].type = WALL_TYPE_HORIZONTAL;
+			candidat[*candidatCount].pos.i = i - 1;
+			candidat[*candidatCount].pos.j = j;
 			(*candidatCount)++;
 			seen[i - 1][j][WALL_TYPE_HORIZONTAL] = true;
 		}
@@ -776,27 +748,20 @@ void collectFewWallsInFrontOfPath(QuoridorCore* self, QuoridorPos* path, int pat
 		// Mouvement horizontal donc candidat mur vertical
 		if (dj != 0 && j > 0 && !seen[i][j - 1][WALL_TYPE_VERTICAL]) 
 		{
-			(*candidat)[*candidatCount].type = WALL_TYPE_VERTICAL;
-			(*candidat)[*candidatCount].pos.i = i;
-			(*candidat)[*candidatCount].pos.j = j - 1;
+			candidat[*candidatCount].type = WALL_TYPE_VERTICAL;
+			candidat[*candidatCount].pos.i = i;
+			candidat[*candidatCount].pos.j = j - 1;
 			(*candidatCount)++;
 			seen[i][j - 1][WALL_TYPE_VERTICAL] = true;
 		}
 	}
 
-
-	for (int i = 0; i < self->gridSize; i++) {
-		for (int j = 0; j < self->gridSize; j++) {
-			free(seen[i][j]);
-		}
-		free(seen[i]);
-	}
-	free(seen);
-
+	return;
 }
 
 
-void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* bestWalls,int *wallCount,void (wichWall)(QuoridorCore*,QuoridorPos*,int,QuoridorWall**,int*))
+
+void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* bestWalls,int *wallCount,void *(wichWall)(QuoridorCore*,QuoridorPos*,int,QuoridorWall*,int*))
 {
 
 	if(self->wallCounts[player] == 0) // si le joueur n'a plus de mur
@@ -815,7 +780,6 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 	int actualPlayerSize, actualEnemySize = 0;
 	//pour collecter les murs a traiter
 	int attemptingCount = 0;
-	QuoridorWall* attemptingWalls = NULL; // ca sera les mur a tester
 
 	//QuoridorWall* bestWalls = (QuoridorWall*)calloc(sizeof(QuoridorWall), MAX_BEST_WALLS); // on initialise le tableau de 5 murs 
 
@@ -823,13 +787,17 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 
 	int playerSize = 0; // on initialise la taille a 0
 
+
 	QuoridorPos playerPath[MAX_GRID_SIZE * MAX_GRID_SIZE];
 	QuoridorPos enemyPath[MAX_GRID_SIZE * MAX_GRID_SIZE];
+
 
 	actualPlayerSize = BFS_search2(self, player, playerPath);
 	actualEnemySize = BFS_search2(self, otherPlayer, enemyPath);
 
 	// ==> reupere les murs autour du chemin ennemi
+
+	QuoridorWall attemptingWalls[100]; // ca sera les mur a tester
 
 	wichWall(self, enemyPath, actualEnemySize, &attemptingWalls, &attemptingCount);   
 

@@ -38,14 +38,16 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore *self, int depth, void *aiDat
 Graph* QuoridorCore_initGraph(QuoridorCore* self, int playerID);
 
 /// @brief prend au + 4 mur *taille du chemin
-void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall** candidat, int* candidatCount);
+void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall* candidat, int* candidatCount);
 
 // @brief prend au + 8 mur sur les 3 premiers cases du chemin et dans la direction du joueur
-void collectFewWallsInFrontOfPath(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall** candidat, int* candidatCount);
+void collectFewWallsInFrontOfPath(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall* candidat, int* candidatCount);
 
 
 /// @brief Calcule les meilleurs mur à jouer.
-void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* bestWalls,int *wallCount, void (wichWall)(QuoridorCore*, QuoridorPos*, int, QuoridorWall**, int*));
+
+void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* bestWalls,int *wallCount, void* (wichWall)(QuoridorCore*, QuoridorPos*, int, QuoridorWall*, int*));
+
 
 
 /// @brief Calcule le plus court chemin entre la position du joueur et sa zone d'arrivée.
