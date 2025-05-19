@@ -345,7 +345,8 @@ void UIQuoridor_updatePageMain(UIQuoridor *self)
 
         QuoridorPos path[MAX_PATH_LEN];
         int size = 0;
-
+        //QuoridorPos* tab = (QuoridorPos*)calloc(core->gridSize * core->gridSize, sizeof(QuoridorPos));
+        //int size = BFS_search2(core, i, tab);
         //Graph* graph = QuoridorCore_initGraph(core, i);
         //QuoridorCore_getShortestPath(core, i, path, &size,graph);
         ListQuor* list = BFS_search(core, i);
