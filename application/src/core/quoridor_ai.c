@@ -114,28 +114,36 @@ void QuoridorCore_getShortestPath(QuoridorCore* self, int playerID, QuoridorPos*
 /// @return Une estimation numérique de l'avantage du joueur playerID.
 static float QuoridorCore_computeScore(QuoridorCore *self, int playerID)
 {
-    int playerA = playerID;
-    int playerB = playerID ^ 1;
+    int playerA = self->playerID;
+    int playerB = self->playerID ^ 1;
 
     // 1. Calculer la distance (chemin le plus court) vers la ligne de but
     QuoridorPos path[MAX_PATH_LEN];
     int distA = 0;
     int distB = 0;
-    Graph *graph = QuoridorCore_initGraph(self, playerA);
-    QuoridorCore_getShortestPath(self, playerA, path, &distA,graph);
-    Graph* graph2 = QuoridorCore_initGraph(self, playerB);
-    QuoridorCore_getShortestPath(self, playerB, path, &distB,graph2);
-    Graph_destroy(graph);
-    Graph_destroy(graph2);
+    //Graph *graph = QuoridorCore_initGraph(self, playerA);
+    //QuoridorCore_getShortestPath(self, playerA, path, &distA,graph);
+    //Graph* graph2 = QuoridorCore_initGraph(self, playerB);
+    //QuoridorCore_getShortestPath(self, playerB, path, &distB,graph2);
+    //Graph_destroy(graph);
+    //Graph_destroy(graph2);
+    ListQuor* list = BFS_search(self, playerA);
+    distA = ListQuor_size(list);
+    free(list);
+    ListQuor* list2 = BFS_search(self, playerB);
+    distB = ListQuor_size(list2);
+    free(list2);
     // 2. Ajouter pondération sur le nombre de murs restants (optionnel mais utile)
     int wallsA = self->wallCounts[playerA];
     int wallsB = self->wallCounts[playerB];
     
     // Pondérer les murs à petite échelle (ex : 0.5 par mur)
     float score = (float)(distB - distA) + 0.3f * (wallsA - wallsB);
-
     // 3. Ajouter un bruit aléatoire pour casser les égalités (pas obligatoire mais pratique)
-    //score += Float_randAB(-0.1f, +0.1f);
+    score += Float_randAB(-0.3f, +0.3f);
+  //  printf("d = %d, w = %d, final = %.2f\n", (distB - distA), (wallsA - wallsB), score);
+
+
 
     return score;
 
@@ -155,7 +163,7 @@ static float QuoridorCore_minMax(
     QuoridorCore *self, int playerID, int currDepth, int maxDepth,
     float alpha, float beta, QuoridorTurn *turn)
 {
-    if (self->state != QUORIDOR_STATE_IN_PROGRESS)
+    if (self->state != QUORIDOR_STATE_IN_PROGRESS) //si un des joueurs a gagné
     {
         if (self->state == QUORIDOR_STATE_P0_WON && playerID == 0)
             return INFINITY;
@@ -166,7 +174,7 @@ static float QuoridorCore_minMax(
         if (self->state == QUORIDOR_STATE_P1_WON && playerID == 1)
             return INFINITY;
     }
-    else if (currDepth >= maxDepth)
+    else if (currDepth >= maxDepth) //si on atteint le profondzeur max
     {
         return QuoridorCore_computeScore(self, playerID);
     }
@@ -181,27 +189,23 @@ static float QuoridorCore_minMax(
     const bool maximizing = (currDepth % 2) == 0;
     float value = maximizing ? -INFINITY : INFINITY;
 
-    // TODO
-    QuoridorPos moves[8];
 
     int moveCount = 0;
-    moveCount = QuoridorCore_getMoves(self, moves, self->positions[playerID], 1);
+    QuoridorPos moves[8];
+    moveCount = QuoridorCore_getMoves(self, moves, self->positions[playerID], 1); 
 
-    for (int k = 0; k < moveCount; k++)
+    for (int k = 0; k < moveCount; k++) //mouvements
     {
         QuoridorCore copy = *self;
         copy.positions[playerID].i = moves[k].i;
         copy.positions[playerID].j = moves[k].j;
 
-
-
-
-
         float tmp = QuoridorCore_minMax(&copy, playerID ^ 1, currDepth + 1, maxDepth, alpha, beta, turn);
-        if (maximizing)
+
+        if (maximizing) //élégage aplha
         {
 
-            if (tmp > value)
+            if (tmp >= value)
             {
                 value = tmp;
                 if (currDepth == 0)
@@ -215,20 +219,20 @@ static float QuoridorCore_minMax(
             if (alpha > beta)
                 break;
         }
-        if (!maximizing)
+        if (!maximizing) //élagage béta
         {
-            if (tmp < value)
+            if (tmp <= value)
                 value = tmp;
             beta = value;
             if (beta < alpha)
                 break;
         }
     }
-    QuoridorWall* walls = (QuoridorWall*)calloc(sizeof(QuoridorWall), MAX_BEST_WALLS); // on initialise le tableau de 5 murs 
+    QuoridorWall* walls = (QuoridorWall*)calloc(sizeof(QuoridorWall), MAX_BEST_WALLS);  //on initialise le tableau de 5 murs 
 
     getBestWall(self, playerID, 999, walls);
 
-    for (int m = 0; m < MAX_BEST_WALLS; m++)
+    for (int m = 0; m < MAX_BEST_WALLS; m++) //murs
     {
 
         QuoridorCore gamecopy = *self;
@@ -244,11 +248,13 @@ static float QuoridorCore_minMax(
             gamecopy.vWalls[walls[m].pos.i][walls[m].pos.j] = WALL_STATE_START;
             gamecopy.vWalls[walls[m].pos.i+1][walls[m].pos.j] = WALL_STATE_END;
         }
+        gamecopy.wallCounts[playerID]--;
         float tmp = QuoridorCore_minMax(&gamecopy, playerID ^ 1, currDepth + 1, maxDepth, alpha, beta, turn);
-        if (maximizing)
+
+        if (maximizing)//élagage aplha
         {
 
-            if (tmp > value)
+            if (tmp >= value)
             {
                 value = tmp;
                 if (currDepth == 0)
@@ -262,9 +268,9 @@ static float QuoridorCore_minMax(
             if (alpha > beta)
                 break;
         }
-        if (!maximizing)
+        if (!maximizing)//élagage béta
         {
-            if (tmp < value)
+            if (tmp <= value)
                 value = tmp;
             beta = value;
             if (beta < alpha)
@@ -277,6 +283,7 @@ static float QuoridorCore_minMax(
         turn->action = QUORIDOR_MOVE_TO;
         turn->i = moves[best].i;
         turn->j = moves[best].j;
+
     }
     else
     {
@@ -293,12 +300,11 @@ static float QuoridorCore_minMax(
             turn->j = walls[best].pos.j;
         }
     }
-
-    // Astuce :
-    // vous devez effectuer toutes vos actions sur une copie du plateau courant.
-    // Comme la structure QuoridorCore ne contient aucune allocation interne,
-    // la copie s'éffectue simplement avec :
-    // QuoridorCore gameCopy = *self;
+    //// Astuce :
+    //// vous devez effectuer toutes vos actions sur une copie du plateau courant.
+    //// Comme la structure QuoridorCore ne contient aucune allocation interne,
+    //// la copie s'éffectue simplement avec :
+    //// QuoridorCore gameCopy = *self;
     free(walls);
 
     return value;
@@ -312,7 +318,7 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore *self, int depth, void *aiDat
 
     const float alpha = -INFINITY;
     const float beta = INFINITY;
-    float childValue = QuoridorCore_minMax(self, self->playerID, 1, depth, alpha, beta, &childTurn);
+    float childValue = QuoridorCore_minMax(self, self->playerID, 0, 2, alpha, beta, &childTurn);
     return childTurn;
 }
 int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves, QuoridorPos pos, int player)
@@ -330,7 +336,7 @@ int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves, QuoridorPos po
 
     if (currI > 0 && !QuoridorCore_hasWallAbove(self, currI, currJ)) // on ajoute au dessus
     {
-        if (!(currI - 1 == otherI && currJ == otherJ))
+        if (!(currI - 1 == otherI && currJ == otherJ) || !player)
         {
             moves[Id].i = currI - 1;
             moves[Id++].j = currJ;
@@ -340,7 +346,7 @@ int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves, QuoridorPos po
     }
     if (currI < gridSize - 1 && !QuoridorCore_hasWallBelow(self, currI, currJ)) //on ajoute en dessous
     {
-        if (!(currI + 1 == otherI && currJ == otherJ))
+        if (!(currI + 1 == otherI && currJ == otherJ) || !player)
         {
             moves[Id].i = currI + 1;
             moves[Id++].j = currJ;
@@ -348,7 +354,7 @@ int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves, QuoridorPos po
     }
     if (currJ > 0 && !QuoridorCore_hasWallLeft(self, currI, currJ)) // on ajoute a gauche
     {
-        if (!(currI == otherI && currJ - 1 == otherJ))
+        if (!(currI == otherI && currJ - 1 == otherJ) || !player)
         {
             moves[Id].i = currI;
             moves[Id++].j = currJ - 1;
@@ -357,7 +363,7 @@ int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves, QuoridorPos po
     }
     if (currJ < gridSize - 1 && !QuoridorCore_hasWallRight(self, currI, currJ)) // on ajoute a droite
     {
-        if (!(currI == otherI && currJ + 1 == otherJ))
+        if (!(currI == otherI && currJ + 1 == otherJ) || !player)
         {
             moves[Id].i = currI;
             moves[Id++].j = currJ + 1;
@@ -553,29 +559,29 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 	QuoridorCore_getShortestPath(self, otherPlayer, tempPath, &actualEnemySize, enemyGraph); // on recupere la taille du plus court chemin 
 	Graph_destroy(enemyGraph); 
 
-    free(tempPath); 
-    
+    free(tempPath);
 
-	for (int i = 0; i < gridSize - 1 ; i++)
+
+    for (int i = 0; i < gridSize - 1; i++)
     {
-        for (int j = 0; j < gridSize - 1 ; j++)
+        for (int j = 0; j < gridSize - 1; j++)
         {
-            for (int type = 0 ; type < 2 ; type++)
+            for (int type = 0; type < 2; type++)
             {
 
                 if (!QuoridorCore_canPlayWall(self, type, i, j))
                     continue;
 
-                Graph* enenemyGraph = QuoridorCore_initGraph(self, otherPlayer); 
+                Graph* enenemyGraph = QuoridorCore_initGraph(self, otherPlayer);
                 Graph* playerGraph = QuoridorCore_initGraph(self, player); // on initialise le graphe du joueur ennemi et du joueur
 
-                if (type == WALL_TYPE_HORIZONTAL) 
+                if (type == WALL_TYPE_HORIZONTAL)
                 {
-					Graph_removeArc(enenemyGraph, i * 9 + j, (i + 1) * 9 + j); //on retire les arc aller retour des deux case 4 cases concernées pour le jouer enemis 
+                    Graph_removeArc(enenemyGraph, i * 9 + j, (i + 1) * 9 + j); //on retire les arc aller retour des deux case 4 cases concernées pour le jouer enemis 
                     Graph_removeArc(enenemyGraph, (i + 1) * 9 + j, i * 9 + j);
                     Graph_removeArc(enenemyGraph, i * 9 + (j + 1), (i + 1) * 9 + (j + 1));
                     Graph_removeArc(enenemyGraph, (i + 1) * 9 + (j + 1), i * 9 + (j + 1));
-                    
+
                     Graph_removeArc(playerGraph, i * 9 + j, (i + 1) * 9 + j); //on retire les arc aller retour des deux case 4 cases concernées pour le joueur en cours
                     Graph_removeArc(playerGraph, (i + 1) * 9 + j, i * 9 + j);
                     Graph_removeArc(playerGraph, i * 9 + (j + 1), (i + 1) * 9 + (j + 1));
@@ -583,13 +589,13 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 
 
                 }
-                else 
+                else
                 {
                     Graph_removeArc(enenemyGraph, i * 9 + j, i * 9 + (j + 1)); //on retire les arc aller retour des deux case 4 cases concernées ppur le joueur enemis
                     Graph_removeArc(enenemyGraph, i * 9 + (j + 1), i * 9 + j);
                     Graph_removeArc(enenemyGraph, (i + 1) * 9 + j, (i + 1) * 9 + (j + 1));
                     Graph_removeArc(enenemyGraph, (i + 1) * 9 + (j + 1), (i + 1) * 9 + j);
-                    
+
                     Graph_removeArc(playerGraph, i * 9 + j, i * 9 + (j + 1)); //on retire les arc aller retour des deux case 4 cases concernées ppur le joueur en cours
                     Graph_removeArc(playerGraph, i * 9 + (j + 1), i * 9 + j);
                     Graph_removeArc(playerGraph, (i + 1) * 9 + j, (i + 1) * 9 + (j + 1));
@@ -597,45 +603,45 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
                 }
 
                 QuoridorCore_getShortestPath(self, otherPlayer, enemyPath, &enemySize, enenemyGraph);
-				QuoridorCore_getShortestPath(self, player, playerPath, &playerSize, playerGraph); 
+                QuoridorCore_getShortestPath(self, player, playerPath, &playerSize, playerGraph);
 
-                Graph_destroy(enenemyGraph); 
-				Graph_destroy(playerGraph);  
+                Graph_destroy(enenemyGraph);
+                Graph_destroy(playerGraph);
 
-				
-                
-				playerRatio = playerSize - actualPlayerSize  ; //le nombre de case en + pour le joeur
-				enemyRatio = enemySize - actualEnemySize ;    // le nombre de cases  en + pour l enemy
-               
-				gain = playerRatio - enemyRatio;  // on fait la diff des deux ratio pour savoir si rentable
+
+
+                playerRatio = playerSize - actualPlayerSize; //le nombre de case en + pour le joeur
+                enemyRatio = enemySize - actualEnemySize;    // le nombre de cases  en + pour l enemy
+
+                gain = playerRatio - enemyRatio;  // on fait la diff des deux ratio pour savoir si rentable
 
                 if (playerRatio < tolerance && enemyRatio > 0)
                 {
-                    if (wallCount < MAX_BEST_WALLS) 
+                    if (wallCount < MAX_BEST_WALLS)
                     {
-                          bestWalls[wallCount].type = type; 
-                          bestWalls[wallCount].pos.i = i;
-                          bestWalls[wallCount].pos.j = j;
-                          bestWalls[wallCount].score = gain;
-                          wallCount++;
+                        bestWalls[wallCount].type = type;
+                        bestWalls[wallCount].pos.i = i;
+                        bestWalls[wallCount].pos.j = j;
+                        bestWalls[wallCount].score = gain;
+                        wallCount++;
                     }
                     else // remplace le pire mure si le courant est mieux
-                    { 
-                       
+                    {
+
                         int minIndex = 0;
                         for (int k = 1; k < MAX_BEST_WALLS; k++)  // on commence a 1 car on suppose case 0 pour commencer
                         {
-                            if (bestWalls[k].score < bestWalls[minIndex].score) 
+                            if (bestWalls[k].score < bestWalls[minIndex].score)
                             {
                                 minIndex = k;
                             }
                         }
-                        if (gain > bestWalls[minIndex].score) 
+                        if (gain > bestWalls[minIndex].score)
                         {
                             bestWalls[minIndex].type = type;
                             bestWalls[minIndex].pos.i = i;
-                            bestWalls[minIndex].pos.j = j; 
-                            bestWalls[minIndex].score = gain; 
+                            bestWalls[minIndex].pos.j = j;
+                            bestWalls[minIndex].score = gain;
 
                         }
 
@@ -643,13 +649,50 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 
                 }
             }
-			
-		}
-	}
 
-    qsort(bestWalls, wallCount, sizeof(QuoridorWall), compareWalls); 
+        }
+    }
+
+    qsort(bestWalls, wallCount, sizeof(QuoridorWall), compareWalls);
 
     free(enemyPath);
     free(playerPath);
     return;
+}
+ListQuor* BFS_search(QuoridorCore* self, int playerID)
+{
+    int tab[MAX_GRID_SIZE][MAX_GRID_SIZE] = { 0 };
+    ListQuor* list = ListQuor_create();
+    ListQuor* list2 = ListQuor_create();
+    ListQuor_insert_last(list, self->positions[playerID],NULL);
+    int nbr = 1;
+    while (list->head)
+    {
+
+        int moveCount = 0;
+        QuoridorPos moves[8];
+        NodeQuor* node = ListQuor_pop_first(list);
+        moveCount = QuoridorCore_getMoves(self, moves, node->pos, nbr);
+        ListQuor_insert_last(list2, node->pos, node->parent);
+
+        nbr = 0;
+        tab[node->pos.i][node->pos.j] = 1;
+
+        if ((playerID == 0 && node->pos.j % MAX_GRID_SIZE == MAX_GRID_SIZE - 1) ||
+            (playerID == 1 && node->pos.j % MAX_GRID_SIZE == 0)) {
+            //printf("(%d,%d) %d\n", node->pos.i, node->pos.j, node->pos.j % MAX_GRID_SIZE);
+            NodeQuor* node2 = ListQuor_pop_last(list2);
+            //printf("2(%d,%d) %d\n", node2->pos.i, node2->pos.j, node2->pos.j % MAX_GRID_SIZE);
+
+            ListQuor_free(list);  // libérer le reste de la file
+            return list2;       // on retourne le chemin trouvé
+        }
+
+        for (int i = 0; i < moveCount; i++)
+        {
+            if(tab[moves[i].i][moves[i].j] == 0)
+                ListQuor_insert_last(list,moves[i], node);
+        }
+    }
+    return NULL;
 }

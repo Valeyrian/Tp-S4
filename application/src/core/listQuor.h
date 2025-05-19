@@ -1,30 +1,21 @@
-#ifndef LISTQUOR_H
-#define LISTQUOR_H
-// types ici
 
 
+#include "core/quoridor_core.h" // pour QuoridorPos
 
-// Types nécessaires
-#include "core/quoridor_ai.h"
+typedef struct NodeQuor {
+    QuoridorPos pos;
+    struct NodeQuor* parent;   // <-- ici, parent devient un pointeur
+    struct NodeQuor* next;
+} NodeQuor;
 
-
-typedef struct NodeQuor NodeQuor;
-struct NodeQuor
-{
-    QuoridorWall wall;
-    NodeQuor* next;
-};
-
-// Liste
-typedef struct ListQuor 
-{
+typedef struct ListQuor {
     NodeQuor* head;
 } ListQuor;
 
 // Fonctions
 ListQuor* ListQuor_create();
-void ListQuor_insert(ListQuor* list, QuoridorWall wall);
-QuoridorWall ListQuor_pop_first(ListQuor* list);
+void ListQuor_insert_last(ListQuor* list, QuoridorPos pos, NodeQuor* parent);
+NodeQuor* ListQuor_pop_first(ListQuor* list);
+NodeQuor* ListQuor_pop_last(ListQuor* list);
 void ListQuor_free(ListQuor* list);
-QuoridorWall ListQuor_pop_last(ListQuor* list);
-#endif
+int ListQuor_size(ListQuor* list);
