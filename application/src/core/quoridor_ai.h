@@ -11,6 +11,7 @@
 #include "core/utils.h"
 #include "core/graph.h"
 #include "core/shortest_path.h"
+#include "core/listQuor.h"
 /// @brief Crée les données utilisées par l'IA.
 /// @param core Instance du jeu Quoridor.
 /// @return Pointeur vers les données de l'IA créées.
@@ -24,6 +25,9 @@ void AIData_destroy(void *self);
 /// À appeler au début de chaque nouvelle partie.
 /// @param self Pointeur vers les données de l'IA.
 void AIData_reset(void *self);
+
+
+
 
 /// @brief Calcule le coup joué par l'IA selon un algorithme de type min-max.
 /// @param self Instance du jeu Quoridor.
@@ -92,3 +96,4 @@ int extractLowestF(bool* inOpenSet, int* fScore, int size);
 /// @param pathSize taille du tableau path
 void AStarShortestPath(QuoridorCore* self, Graph* graph, int player, QuoridorPos* path, int* pathSize);
 
+ListQuor *BFS_search(QuoridorCore* self, int playerID);

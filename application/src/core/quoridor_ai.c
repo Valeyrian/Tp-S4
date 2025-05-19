@@ -254,8 +254,8 @@ void QuoridorCore_getShortestPath(QuoridorCore* self, int playerID, QuoridorPos*
 /// @return Une estimation numérique de l'avantage du joueur playerID.
 static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
 {
-	int playerA = playerID;
-	int playerB = playerID ^ 1;
+	int playerA = self->playerID;
+	int playerB = self->playerID ^ 1;
 
 	// 1. Calculer la distance (chemin le plus court) vers la ligne de but
 	QuoridorPos path[MAX_PATH_LEN];
@@ -271,6 +271,15 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
 	
 	Graph_destroy(graph);
 	Graph_destroy(graph2);
+  
+  /*
+    ListQuor* list = BFS_search(self, playerA);
+    distA = ListQuor_size(list);
+    free(list);
+    ListQuor* list2 = BFS_search(self, playerB);
+    distB = ListQuor_size(list2);
+    free(list2);
+  */
 	// 2. Ajouter pondération sur le nombre de murs restants (optionnel mais utile)
 	int wallsA = self->wallCounts[playerA];
 	int wallsB = self->wallCounts[playerB];
@@ -282,6 +291,7 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
 	score += Float_randAB(-0.1f, +0.1f); 
 
 	return score;
+
 
 }
 
@@ -297,153 +307,151 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
 /// @return L'évaluation numérique de la position courante, selon la fonction heuristique.
 static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth, int maxDepth, float alpha, float beta, QuoridorTurn* turn)
 {
-	if (self->state != QUORIDOR_STATE_IN_PROGRESS)
-	{
-		if (self->state == QUORIDOR_STATE_P0_WON && playerID == 0)
-			return INFINITY;
-		if (self->state == QUORIDOR_STATE_P1_WON && playerID == 0)
-			return -INFINITY;
-		if (self->state == QUORIDOR_STATE_P0_WON && playerID == 1)
-			return -INFINITY;
-		if (self->state == QUORIDOR_STATE_P1_WON && playerID == 1)
-			return INFINITY;
-	}
-	else if (currDepth >= maxDepth)
-	{
-		return QuoridorCore_computeScore(self, playerID);
-	}
-	int best = 0;
-	int IsWall = 0;
+    if (self->state != QUORIDOR_STATE_IN_PROGRESS) //si un des joueurs a gagné
+    {
+        if (self->state == QUORIDOR_STATE_P0_WON && playerID == 0)
+            return INFINITY;
+        if (self->state == QUORIDOR_STATE_P1_WON && playerID == 0)
+            return -INFINITY;
+        if (self->state == QUORIDOR_STATE_P0_WON && playerID == 1)
+            return -INFINITY;
+        if (self->state == QUORIDOR_STATE_P1_WON && playerID == 1)
+            return INFINITY;
+    }
+    else if (currDepth >= maxDepth) //si on atteint le profondzeur max
+    {
+        return QuoridorCore_computeScore(self, playerID);
+    }
+    int best = 0;
+    int IsWall = 0;
 
-	const int gridSize = self->gridSize;
-	const int currI = self->positions[self->playerID].i;
-	const int currJ = self->positions[self->playerID].j;
-	QuoridorTurn childTurn = { 0 };
+    const int gridSize = self->gridSize;
+    const int currI = self->positions[self->playerID].i;
+    const int currJ = self->positions[self->playerID].j;
+    QuoridorTurn childTurn = { 0 };
 
-	const bool maximizing = (currDepth % 2) == 0;
-	float value = maximizing ? -INFINITY : INFINITY;
-
-	// TODO
-	QuoridorPos moves[8];
-
-	int moveCount = 0;
-	moveCount = QuoridorCore_getMoves(self, moves, self->positions[playerID], 1);
-
-	for (int k = 0; k < moveCount; k++)
-	{
-		QuoridorCore copy = *self;
-		copy.positions[playerID].i = moves[k].i;
-		copy.positions[playerID].j = moves[k].j;
+    const bool maximizing = (currDepth % 2) == 0;
+    float value = maximizing ? -INFINITY : INFINITY;
 
 
+    int moveCount = 0;
+    QuoridorPos moves[8];
+    moveCount = QuoridorCore_getMoves(self, moves, self->positions[playerID], 1); 
 
+    for (int k = 0; k < moveCount; k++) //mouvements
+    {
+        QuoridorCore copy = *self;
+        copy.positions[playerID].i = moves[k].i;
+        copy.positions[playerID].j = moves[k].j;
 
+        float tmp = QuoridorCore_minMax(&copy, playerID ^ 1, currDepth + 1, maxDepth, alpha, beta, turn);
 
-		float tmp = QuoridorCore_minMax(&copy, playerID ^ 1, currDepth + 1, maxDepth, alpha, beta, turn);
-		if (maximizing)
-		{
+        if (maximizing) //élégage aplha
+        {
 
-			if (tmp > value)
-			{
-				value = tmp;
-				if (currDepth == 0)
-				{
-					best = k;
-					IsWall = 0;
+            if (tmp >= value)
+            {
+                value = tmp;
+                if (currDepth == 0)
+                {
+                    best = k;
+                    IsWall = 0;
 
-				}
-			}
-			alpha = value;
-			if (alpha > beta)
-				break;
-		}
-		if (!maximizing)
-		{
-			if (tmp < value)
-				value = tmp;
-			beta = value;
-			if (beta < alpha)
-				break;
-		}
-	}
-	QuoridorWall* walls = (QuoridorWall*)calloc(sizeof(QuoridorWall), MAX_BEST_WALLS); // on initialise le tableau de 5 murs 
+                }
+            }
+            alpha = value;
+            if (alpha > beta)
+                break;
+        }
+        if (!maximizing) //élagage béta
+        {
+            if (tmp <= value)
+                value = tmp;
+            beta = value;
+            if (beta < alpha)
+                break;
+        }
+    }
+    QuoridorWall* walls = (QuoridorWall*)calloc(sizeof(QuoridorWall), MAX_BEST_WALLS);  //on initialise le tableau de 5 murs 
 
-	getBestWall(self, playerID, 999, walls);
+    getBestWall(self, playerID, 999, walls);
 
-	for (int m = 0; m < MAX_BEST_WALLS; m++)
-	{
+    for (int m = 0; m < MAX_BEST_WALLS; m++) //murs
+    {
 
-		QuoridorCore gamecopy = *self;
+        QuoridorCore gamecopy = *self;
 
-		if (walls[m].type == WALL_TYPE_HORIZONTAL)
-		{
-			gamecopy.hWalls[walls[m].pos.i][walls[m].pos.j] = WALL_STATE_START;
-			gamecopy.hWalls[walls[m].pos.i][walls[m].pos.j + 1] = WALL_STATE_END;
+        if (walls[m].type == WALL_TYPE_HORIZONTAL)
+        {
+            gamecopy.hWalls[walls[m].pos.i][walls[m].pos.j] = WALL_STATE_START;
+            gamecopy.hWalls[walls[m].pos.i][walls[m].pos.j+1] = WALL_STATE_END;
 
-		}
-		if (walls[m].type == WALL_TYPE_VERTICAL)
-		{
-			gamecopy.vWalls[walls[m].pos.i][walls[m].pos.j] = WALL_STATE_START;
-			gamecopy.vWalls[walls[m].pos.i + 1][walls[m].pos.j] = WALL_STATE_END;
-		}
-		float tmp = QuoridorCore_minMax(&gamecopy, playerID ^ 1, currDepth + 1, maxDepth, alpha, beta, turn);
-		if (maximizing)
-		{
+        }
+        if (walls[m].type == WALL_TYPE_VERTICAL)
+        {
+            gamecopy.vWalls[walls[m].pos.i][walls[m].pos.j] = WALL_STATE_START;
+            gamecopy.vWalls[walls[m].pos.i+1][walls[m].pos.j] = WALL_STATE_END;
+        }
+        gamecopy.wallCounts[playerID]--;
+        float tmp = QuoridorCore_minMax(&gamecopy, playerID ^ 1, currDepth + 1, maxDepth, alpha, beta, turn);
 
-			if (tmp > value)
-			{
-				value = tmp;
-				if (currDepth == 0)
-				{
-					best = m;
-					IsWall = 1;
+        if (maximizing)//élagage aplha
+        {
 
-				}
-			}
-			alpha = value;
-			if (alpha > beta)
-				break;
-		}
-		if (!maximizing)
-		{
-			if (tmp < value)
-				value = tmp;
-			beta = value;
-			if (beta < alpha)
-				break;
-		}
+            if (tmp >= value)
+            {
+                value = tmp;
+                if (currDepth == 0)
+                {
+                    best = m;
+                    IsWall = 1;
 
-	}
-	if (IsWall == 0)
-	{
-		turn->action = QUORIDOR_MOVE_TO;
-		turn->i = moves[best].i;
-		turn->j = moves[best].j;
-	}
-	else
-	{
-		if (walls[best].type == WALL_TYPE_HORIZONTAL)
-		{
-			turn->action = QUORIDOR_PLAY_HORIZONTAL_WALL;
-			turn->i = walls[best].pos.i;
-			turn->j = walls[best].pos.j;
-		}
-		if (walls[best].type == WALL_TYPE_VERTICAL)
-		{
-			turn->action = QUORIDOR_PLAY_VERTICAL_WALL;
-			turn->i = walls[best].pos.i;
-			turn->j = walls[best].pos.j;
-		}
-	}
+                }
+            }
+            alpha = value;
+            if (alpha > beta)
+                break;
+        }
+        if (!maximizing)//élagage béta
+        {
+            if (tmp <= value)
+                value = tmp;
+            beta = value;
+            if (beta < alpha)
+                break;
+        }
 
-	// Astuce :
-	// vous devez effectuer toutes vos actions sur une copie du plateau courant.
-	// Comme la structure QuoridorCore ne contient aucune allocation interne,
-	// la copie s'éffectue simplement avec :
-	// QuoridorCore gameCopy = *self;
-	free(walls);
+    }
+    if (IsWall == 0)
+    {
+        turn->action = QUORIDOR_MOVE_TO;
+        turn->i = moves[best].i;
+        turn->j = moves[best].j;
 
-	return value;
+    }
+    else
+    {
+        if (walls[best].type == WALL_TYPE_HORIZONTAL)
+        {
+            turn->action = QUORIDOR_PLAY_HORIZONTAL_WALL;
+            turn->i = walls[best].pos.i;
+            turn->j = walls[best].pos.j;
+        }
+        if (walls[best].type == WALL_TYPE_VERTICAL)
+        {
+            turn->action = QUORIDOR_PLAY_VERTICAL_WALL;
+            turn->i = walls[best].pos.i;
+            turn->j = walls[best].pos.j;
+        }
+    }
+    //// Astuce :
+    //// vous devez effectuer toutes vos actions sur une copie du plateau courant.
+    //// Comme la structure QuoridorCore ne contient aucune allocation interne,
+    //// la copie s'éffectue simplement avec :
+    //// QuoridorCore gameCopy = *self;
+    free(walls);
+
+    return value;
 }
 
 QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiData)
@@ -452,203 +460,205 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 
 	if (self->state != QUORIDOR_STATE_IN_PROGRESS) return childTurn;
 
-	const float alpha = -INFINITY;
-	const float beta = INFINITY;
-	float childValue = QuoridorCore_minMax(self, self->playerID, 0, 2, alpha, beta, &childTurn); 
-	return childTurn;
+
+  const float alpha = -INFINITY;
+  const float beta = INFINITY;
+  float childValue = QuoridorCore_minMax(self, self->playerID, 0, 2, alpha, beta, &childTurn);
+  return childTurn;
+
 }
 
 int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves, QuoridorPos pos, int player)
 {
-	int Id = 0;
-	const int gridSize = self->gridSize;
-	const int currI = pos.i;
-	const int currJ = pos.j;
-	const int otherI = self->positions[self->playerID ^ 1].i;
-	const int otherJ = self->positions[self->playerID ^ 1].j;
+
+    int Id = 0;
+    const int gridSize = self->gridSize;
+    const int currI = pos.i;
+    const int currJ = pos.j;
+    const int otherI = self->positions[self->playerID ^ 1].i;
+    const int otherJ = self->positions[self->playerID ^ 1].j;
 
 
 
-	//ajoute ou non des 4 cases voisines
+    //ajoute ou non des 4 cases voisines
 
-	if (currI > 0 && !QuoridorCore_hasWallAbove(self, currI, currJ)) // on ajoute au dessus
-	{
-		if (!(currI - 1 == otherI && currJ == otherJ))
-		{
-			moves[Id].i = currI - 1;
-			moves[Id++].j = currJ;
+    if (currI > 0 && !QuoridorCore_hasWallAbove(self, currI, currJ)) // on ajoute au dessus
+    {
+        if (!(currI - 1 == otherI && currJ == otherJ) || !player)
+        {
+            moves[Id].i = currI - 1;
+            moves[Id++].j = currJ;
 
-		}
+        }
+            
+    }
+    if (currI < gridSize - 1 && !QuoridorCore_hasWallBelow(self, currI, currJ)) //on ajoute en dessous
+    {
+        if (!(currI + 1 == otherI && currJ == otherJ) || !player)
+        {
+            moves[Id].i = currI + 1;
+            moves[Id++].j = currJ;
+        }
+    }
+    if (currJ > 0 && !QuoridorCore_hasWallLeft(self, currI, currJ)) // on ajoute a gauche
+    {
+        if (!(currI == otherI && currJ - 1 == otherJ) || !player)
+        {
+            moves[Id].i = currI;
+            moves[Id++].j = currJ - 1;
+        }
 
-	}
-	if (currI < gridSize - 1 && !QuoridorCore_hasWallBelow(self, currI, currJ)) //on ajoute en dessous
-	{
-		if (!(currI + 1 == otherI && currJ == otherJ))
-		{
-			moves[Id].i = currI + 1;
-			moves[Id++].j = currJ;
-		}
-	}
-	if (currJ > 0 && !QuoridorCore_hasWallLeft(self, currI, currJ)) // on ajoute a gauche
-	{
-		if (!(currI == otherI && currJ - 1 == otherJ))
-		{
-			moves[Id].i = currI;
-			moves[Id++].j = currJ - 1;
-		}
+    }
+    if (currJ < gridSize - 1 && !QuoridorCore_hasWallRight(self, currI, currJ)) // on ajoute a droite
+    {
+        if (!(currI == otherI && currJ + 1 == otherJ) || !player)
+        {
+            moves[Id].i = currI;
+            moves[Id++].j = currJ + 1;
+        }
 
-	}
-	if (currJ < gridSize - 1 && !QuoridorCore_hasWallRight(self, currI, currJ)) // on ajoute a droite
-	{
-		if (!(currI == otherI && currJ + 1 == otherJ))
-		{
-			moves[Id].i = currI;
-			moves[Id++].j = currJ + 1;
-		}
+    }
+    if (!player)
+        return Id;
 
-	}
-	if (!player)
-		return Id;
+    /// ------------------------------------------------------------------------
+    //ajoust ou non des coups du mouton
 
-	/// ------------------------------------------------------------------------
-	//ajoust ou non des coups du mouton
+    if (otherI > 0) // on saute par dessu l'autre joueurs vers le hauts
+    {
+        if (otherI == currI - 1 && otherJ == currJ)
+        {
+            if (!QuoridorCore_hasWallAbove(self, currI, currJ) && !QuoridorCore_hasWallAbove(self, otherI, currJ))
+            {
+                moves[Id].i = otherI - 1;
+                moves[Id++].j = currJ;
+            }
+        }
+    }
 
-	if (otherI > 0) // on saute par dessu l'autre joueurs vers le hauts
-	{
-		if (otherI == currI - 1 && otherJ == currJ)
-		{
-			if (!QuoridorCore_hasWallAbove(self, currI, currJ) && !QuoridorCore_hasWallAbove(self, otherI, currJ))
-			{
-				moves[Id].i = otherI - 1;
-				moves[Id++].j = currJ;
-			}
-		}
-	}
+    if (otherI < gridSize - 1) // on saute par dessu l'autre joueurs vers le bas 
+    {
+        if (otherI == currI + 1 && otherJ == currJ)
+        {
+            if (!QuoridorCore_hasWallBelow(self, currI, currJ) && !QuoridorCore_hasWallBelow(self, otherI, currJ))
+            {
+                moves[Id].i = otherI + 1;
+                moves[Id++].j = currJ;
+            }
+        }
+    }
 
-	if (otherI < gridSize - 1) // on saute par dessu l'autre joueurs vers le bas 
-	{
-		if (otherI == currI + 1 && otherJ == currJ)
-		{
-			if (!QuoridorCore_hasWallBelow(self, currI, currJ) && !QuoridorCore_hasWallBelow(self, otherI, currJ))
-			{
-				moves[Id].i = otherI + 1;
-				moves[Id++].j = currJ;
-			}
-		}
-	}
+    if (otherJ > 0) // on saute par dessu l'autre joueurs vers la gauche
+    {
+        if (otherI == currI && otherJ == currJ - 1)
+        {
+            if (!QuoridorCore_hasWallLeft(self, currI, currJ) && !QuoridorCore_hasWallLeft(self, otherI, otherJ))
+            {
+                moves[Id].i = currI;
+                moves[Id++].j = otherJ - 1;
+            }
+        }
+    }
 
-	if (otherJ > 0) // on saute par dessu l'autre joueurs vers la gauche
-	{
-		if (otherI == currI && otherJ == currJ - 1)
-		{
-			if (!QuoridorCore_hasWallLeft(self, currI, currJ) && !QuoridorCore_hasWallLeft(self, otherI, otherJ))
-			{
-				moves[Id].i = currI;
-				moves[Id++].j = otherJ - 1;
-			}
-		}
-	}
+    if (otherJ < gridSize - 1) // on saute par dessu l'autre joueurs vers la droite 
+    {
+        if (otherI == currI && otherJ == currJ + 1)
+        {
+            if (!QuoridorCore_hasWallRight(self, currI, currJ) && !QuoridorCore_hasWallRight(self, otherI, otherJ))
+            {
+                moves[Id].i = currI;
+                moves[Id++].j = otherJ + 1;
+            }
+        }
+    }
 
-	if (otherJ < gridSize - 1) // on saute par dessu l'autre joueurs vers la droite 
-	{
-		if (otherI == currI && otherJ == currJ + 1)
-		{
-			if (!QuoridorCore_hasWallRight(self, currI, currJ) && !QuoridorCore_hasWallRight(self, otherI, otherJ))
-			{
-				moves[Id].i = currI;
-				moves[Id++].j = otherJ + 1;
-			}
-		}
-	}
-
-	/// --------------------------------------------------------------------
-
-
-	// ajoute les coups du cheval         
-
-	if (otherI > 0) // on saute par dessu l'autre joueurs du bas vers la gauche ou la droite (asscendant)
-	{
-		if (otherI == currI - 1 && otherJ == currJ)
-		{
-			if (QuoridorCore_hasWallAbove(self, otherI, otherJ) && !QuoridorCore_hasWallAbove(self, currI, currJ))
-			{
-				if (!QuoridorCore_hasWallLeft(self, otherI, otherJ) && otherJ > 0)
-				{
-					moves[Id].i = otherI;
-					moves[Id++].j = otherJ - 1;
-				}
-				if (!QuoridorCore_hasWallRight(self, otherI, otherJ) && otherJ < gridSize - 1)
-				{
-					moves[Id].i = otherI;
-					moves[Id++].j = otherJ + 1;
-				}
-			}
-		}
-	}
-
-	if (otherI < gridSize - 1) // on saute par dessu l'autre joueurs du haut vers la gauche ou la droite (descendant)
-	{
-		if (otherI == currI + 1 && otherJ == currJ)
-		{
-			if (QuoridorCore_hasWallBelow(self, otherI, otherJ) && !QuoridorCore_hasWallBelow(self, currI, currJ))
-			{
-				if (!QuoridorCore_hasWallLeft(self, otherI, otherJ) && otherJ > 0)
-				{
-					moves[Id].i = otherI;
-					moves[Id++].j = otherJ - 1;
-				}
-				if (!QuoridorCore_hasWallRight(self, otherI, otherJ) && otherJ < gridSize - 1)
-				{
-					moves[Id].i = otherI;
-					moves[Id++].j = otherJ + 1;
-				}
-			}
-		}
-	}
-
-	if (otherJ > 0) // on saute par dessu l'autre joueurs vers la gauche
-	{
-		if (otherI == currI && otherJ == currJ - 1)
-		{
-			if (QuoridorCore_hasWallLeft(self, otherI, otherJ) && !QuoridorCore_hasWallLeft(self, currI, currJ))
-			{
-				if (!QuoridorCore_hasWallAbove(self, otherI, otherJ) && otherI > 0)
-				{
-					moves[Id].i = otherI - 1;
-					moves[Id++].j = otherJ;
-				}
-				if (!QuoridorCore_hasWallBelow(self, otherI, otherJ) && otherI < gridSize - 1)
-				{
-					moves[Id].i = otherI + 1;
-					moves[Id++].j = otherJ;
-				}
-			}
-
-		}
-	}
+    /// --------------------------------------------------------------------
 
 
-	if (otherJ < gridSize - 1) // on saute par dessu l'autre joueurs vers la droite
-	{
-		if (otherI == currI && otherJ == currJ + 1)
-		{
-			if (QuoridorCore_hasWallRight(self, otherI, otherJ) && !QuoridorCore_hasWallRight(self, currI, currJ))
-			{
-				if (!QuoridorCore_hasWallAbove(self, otherI, otherJ) && otherI > 0)
-				{
-					moves[Id].i = otherI - 1;
-					moves[Id++].j = otherJ;
-				}
-				if (!QuoridorCore_hasWallBelow(self, otherI, otherJ) && otherI < gridSize - 1)
-				{
-					moves[Id].i = otherI + 1;
-					moves[Id++].j = otherJ;
-				}
-			}
-		}
-	}
-	return Id;
+    // ajoute les coups du cheval         
 
+    if (otherI > 0) // on saute par dessu l'autre joueurs du bas vers la gauche ou la droite (asscendant)
+    {
+        if (otherI == currI - 1 && otherJ == currJ)
+        {
+            if (QuoridorCore_hasWallAbove(self, otherI, otherJ) && !QuoridorCore_hasWallAbove(self, currI, currJ))
+            {
+                if (!QuoridorCore_hasWallLeft(self, otherI, otherJ) && otherJ > 0)
+                {
+                    moves[Id].i = otherI;
+                    moves[Id++].j = otherJ - 1;
+                }
+                if (!QuoridorCore_hasWallRight(self, otherI, otherJ) && otherJ < gridSize - 1)
+                {
+                    moves[Id].i = otherI;
+                    moves[Id++].j = otherJ + 1;
+                }
+            }
+        }
+    }
+
+    if (otherI < gridSize - 1) // on saute par dessu l'autre joueurs du haut vers la gauche ou la droite (descendant)
+    {
+        if (otherI == currI + 1 && otherJ == currJ)
+        {
+            if (QuoridorCore_hasWallBelow(self, otherI, otherJ) && !QuoridorCore_hasWallBelow(self, currI, currJ))
+            {
+                if (!QuoridorCore_hasWallLeft(self, otherI, otherJ) && otherJ > 0)
+                {
+                    moves[Id].i = otherI;
+                    moves[Id++].j = otherJ - 1;
+                }
+                if (!QuoridorCore_hasWallRight(self, otherI, otherJ) && otherJ < gridSize - 1)
+                {
+                    moves[Id].i = otherI;
+                    moves[Id++].j = otherJ + 1;
+                }
+            }
+        }
+    }
+
+    if (otherJ > 0) // on saute par dessu l'autre joueurs vers la gauche
+    {
+        if (otherI == currI && otherJ == currJ - 1)
+        {
+            if (QuoridorCore_hasWallLeft(self, otherI, otherJ) && !QuoridorCore_hasWallLeft(self, currI, currJ))
+            {
+                if (!QuoridorCore_hasWallAbove(self, otherI, otherJ) && otherI > 0)
+                {
+                    moves[Id].i = otherI - 1;
+                    moves[Id++].j = otherJ;
+                }
+                if (!QuoridorCore_hasWallBelow(self, otherI, otherJ) && otherI < gridSize - 1)
+                {
+                    moves[Id].i = otherI + 1;
+                    moves[Id++].j = otherJ;
+                }
+            }
+
+        }
+    }
+
+
+    if (otherJ < gridSize - 1) // on saute par dessu l'autre joueurs vers la droite
+    {
+        if (otherI == currI && otherJ == currJ + 1)
+        {
+            if (QuoridorCore_hasWallRight(self, otherI, otherJ) && !QuoridorCore_hasWallRight(self, currI, currJ))
+            {
+                if (!QuoridorCore_hasWallAbove(self, otherI, otherJ) && otherI > 0)
+                {
+                    moves[Id].i = otherI - 1;
+                    moves[Id++].j = otherJ;
+                }
+                if (!QuoridorCore_hasWallBelow(self, otherI, otherJ) && otherI < gridSize - 1)
+                {
+                    moves[Id].i = otherI + 1;
+                    moves[Id++].j = otherJ;
+                }
+            }
+        }
+    }
+    return Id;
 }
 
 ///@brief fonction pour comparer des murs grace a leur score de gain necesaire a qsort
@@ -878,4 +888,41 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 	free(attemptingWalls);
 
 	return;
+}
+ListQuor* BFS_search(QuoridorCore* self, int playerID)
+{
+    int tab[MAX_GRID_SIZE][MAX_GRID_SIZE] = { 0 };
+    ListQuor* list = ListQuor_create();
+    ListQuor* list2 = ListQuor_create();
+    ListQuor_insert_last(list, self->positions[playerID],NULL);
+    int nbr = 1;
+    while (list->head)
+    {
+
+        int moveCount = 0;
+        QuoridorPos moves[8];
+        NodeQuor* node = ListQuor_pop_first(list);
+        moveCount = QuoridorCore_getMoves(self, moves, node->pos, nbr);
+        ListQuor_insert_last(list2, node->pos, node->parent);
+
+        nbr = 0;
+        tab[node->pos.i][node->pos.j] = 1;
+
+        if ((playerID == 0 && node->pos.j % MAX_GRID_SIZE == MAX_GRID_SIZE - 1) ||
+            (playerID == 1 && node->pos.j % MAX_GRID_SIZE == 0)) {
+            //printf("(%d,%d) %d\n", node->pos.i, node->pos.j, node->pos.j % MAX_GRID_SIZE);
+            NodeQuor* node2 = ListQuor_pop_last(list2);
+            //printf("2(%d,%d) %d\n", node2->pos.i, node2->pos.j, node2->pos.j % MAX_GRID_SIZE);
+
+            ListQuor_free(list);  // libérer le reste de la file
+            return list2;       // on retourne le chemin trouvé
+        }
+
+        for (int i = 0; i < moveCount; i++)
+        {
+            if(tab[moves[i].i][moves[i].j] == 0)
+                ListQuor_insert_last(list,moves[i], node);
+        }
+    }
+    return NULL;
 }
