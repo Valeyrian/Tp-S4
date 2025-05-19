@@ -37,9 +37,16 @@ void AIData_reset(void *self);
 QuoridorTurn QuoridorCore_computeTurn(QuoridorCore *self, int depth, void *aiData);
 Graph* QuoridorCore_initGraph(QuoridorCore* self, int playerID);
 
+/// @brief prend au + 4 mur *taille du chemin
+void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall** candidat, int* candidatCount);
 
-/// @brief Calcule les 5 meilleurs mur à jouer.
-void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* bestWalls);
+// @brief prend au + 8 mur sur les 3 premiers cases du chemin et dans la direction du joueur
+void collectFewWallsInFrontOfPath(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall** candidat, int* candidatCount);
+
+
+/// @brief Calcule les meilleurs mur à jouer.
+void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* bestWalls, void* (wichWall)(QuoridorCore*, QuoridorPos*, int, QuoridorWall**, int*));
+
 
 /// @brief Calcule le plus court chemin entre la position du joueur et sa zone d'arrivée.
 /// @param self Instance du jeu Quoridor.
@@ -97,3 +104,4 @@ int extractLowestF(bool* inOpenSet, int* fScore, int size);
 void AStarShortestPath(QuoridorCore* self, Graph* graph, int player, QuoridorPos* path, int* pathSize);
 
 ListQuor *BFS_search(QuoridorCore* self, int playerID);
+int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab);
