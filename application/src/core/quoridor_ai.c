@@ -36,7 +36,7 @@ Graph* QuoridorCore_initGraph(QuoridorCore* self, int playerID)
 		for (int j = 0; j < 9; j++)
 		{
 
-			QuoridorPos moves[8];
+			QuoridorPos moves[8] = { 0 };
 			QuoridorPos pos;
 			pos.i = i;
 			pos.j = j;
@@ -261,35 +261,14 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
 	int playerA = self->playerID;
 	int playerB = self->playerID ^ 1;
 
-	// 1. Calculer la distance (chemin le plus court) vers la ligne de but
-	QuoridorPos path[MAX_PATH_LEN];
 	int distA = 0;
 	int distB = 0;
-	//Graph* graph = QuoridorCore_initGraph(self, playerA);
-	//////QuoridorCore_getShortestPath(self, playerA, path, &distA, graph);
-	//AStarShortestPath(self, graph, playerA, path, &distA); 
 
-	//Graph* graph2 = QuoridorCore_initGraph(self, playerB);
-	////QuoridorCore_getShortestPath(self, playerB, path, &distB, graph2);
-	//AStarShortestPath(self, graph2, playerB, path, &distB); 
-	//
-	//Graph_destroy(graph);
-	//Graph_destroy(graph2);
+	QuoridorPos playerApath[MAX_GRID_SIZE * MAX_GRID_SIZE];
+	QuoridorPos playerBpath[MAX_GRID_SIZE * MAX_GRID_SIZE];
+	distA = BFS_search2(self, playerA, playerApath);
+	distB = BFS_search2(self, playerB, playerBpath);
 
-	QuoridorPos* tab = calloc(self->gridSize * self->gridSize, sizeof(QuoridorPos));
-	distA = BFS_search2(self, playerA, tab);
-	distB = BFS_search2(self, playerB, tab);
-
-  /*
-    ListQuor* list = BFS_search(self, playerA);
-    distA = ListQuor_size(list);
-    free(list);
-    ListQuor* list2 = BFS_search(self, playerB);
-    distB = ListQuor_size(list2);
-    free(list2);
-  */
-	
-  // 2. Ajouter pondération sur le nombre de murs restants (optionnel mais utile)
 	int wallsA = self->wallCounts[playerA];
 	int wallsB = self->wallCounts[playerB];
 
@@ -300,10 +279,7 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
 
 	//score += Float_randAB(-0.2f, +0.2f); 
 
-
 	return score;
-
-
 }
 
 /// @brief Applique l'algorithme Min-Max (avec élagage alpha-bêta) pour déterminer le coup joué par l'IA.
@@ -318,7 +294,6 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
 /// @return L'évaluation numérique de la position courante, selon la fonction heuristique.
 static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth, int maxDepth, float alpha, float beta, QuoridorTurn* turn)
 {
-	printf("depth : %d\n", currDepth); 
 
     if (self->state != QUORIDOR_STATE_IN_PROGRESS) //si un des joueurs a gagné
     {
@@ -353,7 +328,6 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
 
     for (int k = 0; k < moveCount; k++) //mouvements
     {
-		printf("mouvement : %d\n", k);
         QuoridorCore copy = *self;
         copy.positions[playerID].i = moves[k].i;
         copy.positions[playerID].j = moves[k].j;
@@ -386,7 +360,7 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
                 break;
         }
     }
-    QuoridorWall* walls = (QuoridorWall*)calloc(sizeof(QuoridorWall), MAX_BEST_WALLS);  //on initialise le tableau de 5 murs 
+	QuoridorWall walls[MAX_BEST_WALLS] = { 0 };  //on initialise le tableau de 5 murs 
 	
 	int wallCount = 0;
     //getBestWall(self, playerID, 999, walls,&wallCount,collectAllWallsNearPath);  
@@ -396,7 +370,6 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
 		
     for (int m = 0; m < wallCount; m++) //murs 
     {
-		printf("murs : %d\n", m);
         QuoridorCore gamecopy = *self;
 		
         if (walls[m].type == WALL_TYPE_HORIZONTAL)
@@ -787,6 +760,7 @@ void collectFewWallsInFrontOfPath(QuoridorCore* self, QuoridorPos* path, int pat
 }
 
 
+
 void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* bestWalls,int *wallCount,void *(wichWall)(QuoridorCore*,QuoridorPos*,int,QuoridorWall*,int*))
 {
 
@@ -809,27 +783,25 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 
 	//QuoridorWall* bestWalls = (QuoridorWall*)calloc(sizeof(QuoridorWall), MAX_BEST_WALLS); // on initialise le tableau de 5 murs 
 
-	QuoridorPos* enemyPath = calloc(81, sizeof(QuoridorPos)); // on intialise un chemim maximum vide 
 	int enemySize = 0; // on initialise la taille a 0
 
-	QuoridorPos* playerPath = calloc(81, sizeof(QuoridorPos)); // on intialise un chemim maximum vide
 	int playerSize = 0; // on initialise la taille a 0
 
 
-	Graph* playerGraph = QuoridorCore_initGraph(self, player); // on initialise le graphe du joueur en cours 
+	QuoridorPos playerPath[MAX_GRID_SIZE * MAX_GRID_SIZE];
+	QuoridorPos enemyPath[MAX_GRID_SIZE * MAX_GRID_SIZE];
 
-	Graph* enemyGraph = QuoridorCore_initGraph(self, otherPlayer); // on initialise le graphe de l'autre joueur 
 
-	// QuoridorCore_getShortestPath(self, player, tempPath, &actualPlayerSize, playerGraph); // on recupere la taille du plus court chemin
-	AStarShortestPath(self, playerGraph, player, playerPath, &actualPlayerSize);  // on recupere la taille du plus court chemin avec l'algorithme A*
-	
-	//QuoridorCore_getShortestPath(self, otherPlayer, tempPath, &actualEnemySize, enemyGraph); // on recupere la taille du plus court chemin 
-
-	AStarShortestPath(self, enemyGraph, otherPlayer, enemyPath, &actualEnemySize);   // on recupere la taille du plus court chemin avec l'algorithme A*
+	actualPlayerSize = BFS_search2(self, player, playerPath);
+	actualEnemySize = BFS_search2(self, otherPlayer, enemyPath);
 
 	// ==> reupere les murs autour du chemin ennemi
+
 	QuoridorWall attemptingWalls[100]; // ca sera les mur a tester
+
 	wichWall(self, enemyPath, actualEnemySize, &attemptingWalls, &attemptingCount);   
+
+	QuoridorCore copy = *self;
 
 	//update : tester que les murs qui sont pas sur le chemin
 	for (int walls = 0; walls < attemptingCount; walls++)
@@ -843,39 +815,16 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 
 		if (type == WALL_TYPE_HORIZONTAL)
 		{
-			Graph_removeArc(enemyGraph, i * 9 + j, (i + 1) * 9 + j); //on retire les arc aller retour des deux case 4 cases concernées pour le jouer enemis 
-			Graph_removeArc(enemyGraph, (i + 1) * 9 + j, i * 9 + j);
-			Graph_removeArc(enemyGraph, i * 9 + (j + 1), (i + 1) * 9 + (j + 1));
-			Graph_removeArc(enemyGraph, (i + 1) * 9 + (j + 1), i * 9 + (j + 1));
-
-			Graph_removeArc(playerGraph, i * 9 + j, (i + 1) * 9 + j); //on retire les arc aller retour des deux case 4 cases concernées pour le joueur en cours
-			Graph_removeArc(playerGraph, (i + 1) * 9 + j, i * 9 + j);
-			Graph_removeArc(playerGraph, i * 9 + (j + 1), (i + 1) * 9 + (j + 1));
-			Graph_removeArc(playerGraph, (i + 1) * 9 + (j + 1), i * 9 + (j + 1));
-
-	
+			copy.hWalls[i][j] = WALL_STATE_START;
+			copy.hWalls[i][j+1] = WALL_STATE_END;
 		}
 		else if (type == WALL_TYPE_VERTICAL) 
 		{
-			Graph_removeArc(enemyGraph, i * 9 + j, i * 9 + (j + 1)); //on retire les arc aller retour des deux case 4 cases concernées ppur le joueur enemis
-			Graph_removeArc(enemyGraph, i * 9 + (j + 1), i * 9 + j);
-			Graph_removeArc(enemyGraph, (i + 1) * 9 + j, (i + 1) * 9 + (j + 1));
-			Graph_removeArc(enemyGraph, (i + 1) * 9 + (j + 1), (i + 1) * 9 + j);
-
-			Graph_removeArc(playerGraph, i * 9 + j, i * 9 + (j + 1)); //on retire les arc aller retour des deux case 4 cases concernées ppur le joueur en cours
-			Graph_removeArc(playerGraph, i * 9 + (j + 1), i * 9 + j);
-			Graph_removeArc(playerGraph, (i + 1) * 9 + j, (i + 1) * 9 + (j + 1));
-			Graph_removeArc(playerGraph, (i + 1) * 9 + (j + 1), (i + 1) * 9 + j);
+			copy.vWalls[i][j] = WALL_STATE_START;
+			copy.vWalls[i + 1][j] = WALL_STATE_END;
 		}
-
-
-		// QuoridorCore_getShortestPath(self, otherPlayer, enemyPath, &enemySize, enenemyGraph);
-		AStarShortestPath(self, enemyGraph, otherPlayer, enemyPath, &enemySize);
-
-		//QuoridorCore_getShortestPath(self, player, playerPath, &playerSize, playerGraph);
-		AStarShortestPath(self, playerGraph, player, playerPath, &playerSize);
-
-
+		playerSize = BFS_search2(&copy, player, playerPath);
+		enemySize = BFS_search2(&copy, otherPlayer, enemyPath);
 
 		playerRatio = playerSize - actualPlayerSize; //le nombre de case en + pour le joeur
 		enemyRatio = enemySize - actualEnemySize;    // le nombre de cases en + pour l enemy
@@ -909,94 +858,22 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 					bestWalls[minIndex].pos.i = i;
 					bestWalls[minIndex].pos.j = j;
 					bestWalls[minIndex].score = gain;
-
 				}
-
 			}
-
 		}
-		//on remet les arretes
-		if (type == WALL_TYPE_HORIZONTAL)
-		{
-			Graph_setArc(enemyGraph, i * 9 + j, (i + 1) * 9 + j,1); //on retire les arc aller retour des deux case 4 cases concernées pour le jouer enemis 
-			Graph_setArc(enemyGraph, (i + 1) * 9 + j, i * 9 + j,1);
-			Graph_setArc(enemyGraph, i * 9 + (j + 1), (i + 1) * 9 + (j + 1),1);
-			Graph_setArc(enemyGraph, (i + 1) * 9 + (j + 1), i * 9 + (j + 1),1);
-
-			Graph_setArc(playerGraph, i * 9 + j, (i + 1) * 9 + j,1); //on retire les arc aller retour des deux case 4 cases concernées pour le joueur en cours
-			Graph_setArc(playerGraph, (i + 1) * 9 + j, i * 9 + j,1);
-			Graph_setArc(playerGraph, i * 9 + (j + 1), (i + 1) * 9 + (j + 1),1);
-			Graph_setArc(playerGraph, (i + 1) * 9 + (j + 1), i * 9 + (j + 1),1);
-
-		}
-		else if (type == WALL_TYPE_VERTICAL) 
-		{
-			Graph_setArc(enemyGraph, i * 9 + j, i * 9 + (j + 1),1); //on retire les arc aller retour des deux case 4 cases concernées ppur le joueur enemis
-			Graph_setArc(enemyGraph, i * 9 + (j + 1), i * 9 + j,1);
-			Graph_setArc(enemyGraph, (i + 1) * 9 + j, (i + 1) * 9 + (j + 1),1);
-			Graph_setArc(enemyGraph, (i + 1) * 9 + (j + 1), (i + 1) * 9 + j,1);
-
-			Graph_setArc(playerGraph, i * 9 + j, i * 9 + (j + 1),1); //on retire les arc aller retour des deux case 4 cases concernées ppur le joueur en cours
-			Graph_setArc(playerGraph, i * 9 + (j + 1), i * 9 + j,1); 
-			Graph_setArc(playerGraph, (i + 1) * 9 + j, (i + 1) * 9 + (j + 1),1); 
-			Graph_setArc(playerGraph, (i + 1) * 9 + (j + 1), (i + 1) * 9 + j,1); 
-		} 
-
+		copy = *self;
 	}
 
 	if (*wallCount > 1)
 		qsort(bestWalls, *wallCount, sizeof(QuoridorWall), compareWalls);
 
-
-	Graph_destroy(playerGraph); 
-	Graph_destroy(enemyGraph); 
-	free(enemyPath);
-	free(playerPath);
-	free(attemptingWalls);
 	return;
 }
 
-ListQuor* BFS_search(QuoridorCore* self, int playerID)
-{
-    int tab[MAX_GRID_SIZE][MAX_GRID_SIZE] = { 0 };
-    ListQuor* list = ListQuor_create();
-    ListQuor* list2 = ListQuor_create();
-    ListQuor_insert_last(list, self->positions[playerID],NULL);
-    int nbr = 1;
-    while (list->head)
-    {
-
-        int moveCount = 0;
-        QuoridorPos moves[8];
-        NodeQuor* node = ListQuor_pop_first(list);
-        moveCount = QuoridorCore_getMoves(self, moves, node->pos, nbr);
-        ListQuor_insert_last(list2, node->pos, node->parent);
-
-        nbr = 0;
-        tab[node->pos.i][node->pos.j] = 1;
-
-        if ((playerID == 0 && node->pos.j % MAX_GRID_SIZE == MAX_GRID_SIZE - 1) ||
-            (playerID == 1 && node->pos.j % MAX_GRID_SIZE == 0)) {
-            //printf("(%d,%d) %d\n", node->pos.i, node->pos.j, node->pos.j % MAX_GRID_SIZE);
-            NodeQuor* node2 = ListQuor_pop_last(list2);
-            //printf("2(%d,%d) %d\n", node2->pos.i, node2->pos.j, node2->pos.j % MAX_GRID_SIZE);
-
-            ListQuor_free(list);  // libérer le reste de la file
-            return list2;       // on retourne le chemin trouvé
-        }
-
-        for (int i = 0; i < moveCount; i++)
-        {
-            if(tab[moves[i].i][moves[i].j] == 0)
-                ListQuor_insert_last(list,moves[i], node);
-        }
-    }
-    return NULL;
-}
 int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab)
 {
-	int* parent = calloc(self->gridSize * self->gridSize, sizeof(int));
-	int* explored = calloc(self->gridSize * self->gridSize, sizeof(int));
+	int parent[MAX_GRID_SIZE * MAX_GRID_SIZE] = { 0 };
+	int explored[MAX_GRID_SIZE * MAX_GRID_SIZE] = { 0 };
 	tab[0] = self->positions[playerID];
 	explored[self->positions[playerID].i * self->gridSize + self->positions[playerID].j] = 1;
 
@@ -1009,11 +886,13 @@ int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab)
 	while (start < end)
 	{
 		int moveCount = 0;
+
 		QuoridorPos moves[8];
 
 		QuoridorPos position = tab[start++];
 
 		moveCount = QuoridorCore_getMoves(self, moves, position, nbr);
+
 		nbr = 0;
 
 		int tmp = start - 1;
@@ -1025,9 +904,6 @@ int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab)
 				size++;
 				tmp = parent[tmp];
 			}
-
-			free(parent);
-			free(explored);
 			return size; // Retourne la taille du chemin trouvé
 		}
 
@@ -1042,7 +918,5 @@ int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab)
 		}
 	}
 
-	free(parent);
-	free(explored);
 	return -1; // Retourne -1 si aucun chemin n'est trouvé
 }

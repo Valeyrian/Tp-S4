@@ -343,17 +343,12 @@ void UIQuoridor_updatePageMain(UIQuoridor *self)
         sprintf(buffer, "%d", core->wallCounts[i]);
         Text_setString(self->m_textWalls[i], buffer);
 
-        QuoridorPos path[MAX_PATH_LEN];
+        QuoridorPos path[MAX_GRID_SIZE * MAX_GRID_SIZE];
         int size = 0;
-        //QuoridorPos* tab = (QuoridorPos*)calloc(core->gridSize * core->gridSize, sizeof(QuoridorPos));
-        //int size = BFS_search2(core, i, tab);
-        //Graph* graph = QuoridorCore_initGraph(core, i);
-        //QuoridorCore_getShortestPath(core, i, path, &size,graph);
-        ListQuor* list = BFS_search(core, i);
-        size = ListQuor_size(list);
+        size = BFS_search2(core, i,path);
+
         sprintf(buffer, "%d", size - 1);
         Text_setString(self->m_textDistances[i], buffer);
-        free(list);
     }
 
     const bool playerTurn = UIQuoridor_isPlayerTurn(self);
