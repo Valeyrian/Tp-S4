@@ -32,6 +32,9 @@ void AIData_reset(void *self);
 /// @return Le tour choisi par l'IA.
 QuoridorTurn QuoridorCore_computeTurn(QuoridorCore *self, int depth, void *aiData);
 Graph* QuoridorCore_initGraph(QuoridorCore* self, int playerID);
+
+
+/// @brief Calcule les 5 meilleurs mur à jouer.
 void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* bestWalls);
 
 /// @brief Calcule le plus court chemin entre la position du joueur et sa zone d'arrivée.
@@ -52,8 +55,40 @@ void QuoridorCore_getShortestPath(QuoridorCore *self, int playerID, QuoridorPos 
 INLINE QuoridorTurn QuoridorCore_computeMoodleTurn(QuoridorCore* self, void* aiData)
 {
     const int depth = 2;
-    return QuoridorCore_computeTurn(self, 0, aiData);
+    return QuoridorCore_computeTurn(self, depth, aiData);
 }
 
 
+/// @brief fonction qui retourne l'huristique du'un position dist en j
+/// @param self Instance du jeu Quoridor.
+/// @param node Position du joueur
+/// @param player Identifiant du joueur (0 ou 1).
+/// @return la valeur de l'huristique
+int heuristic(QuoridorCore* self, int node, int player);
+
+///@brief fonction pour retrouver le chemin passe apres A*
+/// @param self Instance du jeu Quoridor.
+/// @param cameFrom tableau contenant les noeuds parents
+/// @param current position actuelle
+/// @param path tableau contenant le chemin
+/// @param pathSize taille du tableau path
+/// @return le chemin
+void pathRefinder(QuoridorCore* self, int* cameFrom, int current, QuoridorPos* path, int* pathSize);
+
+/// @brief fonction pour trouver le noeud ayant le fscore le plus bas
+/// @bief fscore = gscore + hscore
+/// @param inOpenSet tableau contenant les noeuds ouverts
+/// @param fScore tableau contenant les fscore
+/// @param size taille du tableau
+/// @return le noeud ayant le fscore le plus bas
+int extractLowestF(bool* inOpenSet, int* fScore, int size);
+
+
+/// @brief fonction pour trouver le + court chemin jusqu'a la position de victoire base sur l'heuristique
+/// @param self Instance du jeu Quoridor.
+/// @param graph le graphe
+/// @param player Identifiant du joueur (0 ou 1).
+/// @param path tableau contenant le chemin
+/// @param pathSize taille du tableau path
+void AStarShortestPath(QuoridorCore* self, Graph* graph, int player, QuoridorPos* path, int* pathSize);
 
