@@ -123,8 +123,6 @@ bool QuoridorCore_canPlayWall(QuoridorCore *self, WallType type, int i, int j)
         self->vWalls[i + 1][j] = WALL_STATE_NONE; 
     }
 	
-
-    
     return feasible;
    
 }
