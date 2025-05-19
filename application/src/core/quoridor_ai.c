@@ -121,7 +121,6 @@ void AStarShortestPath(QuoridorCore *self ,Graph* graph, int player, QuoridorPos
 
 	int start = self->positions[player].i * self->gridSize + self->positions[player].j; // position de depart du joueur  
 
-	int start = self->positions[player].i * self->gridSize + self->positions[player].j; // position de depart du joueur 
 
 	
 	int boardLength = self->gridSize * self->gridSize; 
@@ -765,8 +764,8 @@ void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize
 
 void collectFewWallsInFrontOfPath(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall** candidat, int* candidatCount) //regarde les murs bien orient au debut du chemin
 {
-	const int maxWalls = 8;
-	const int maxSteps = min(pathSize - 1, 3); // examine les 3 premiere case 
+	const int maxWalls = 32;
+	const int maxSteps = min(pathSize - 1, 4); // examine les 3 premiere case 
 
 	*candidat = calloc(maxWalls, sizeof(QuoridorWall));
 	*candidatCount = 0;
@@ -1034,11 +1033,11 @@ ListQuor* BFS_search(QuoridorCore* self, int playerID)
 }
 int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab)
 {
-
 	int* parent = calloc(self->gridSize * self->gridSize, sizeof(int));
 	int* explored = calloc(self->gridSize * self->gridSize, sizeof(int));
 	tab[0] = self->positions[playerID];
-	explored[0] = 1;
+	explored[self->positions[playerID].i * self->gridSize + self->positions[playerID].j] = 1;
+
 	parent[0] = -1;
 	int start = 0, end = 1;
 	int nbr = 1;
@@ -1047,28 +1046,27 @@ int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab)
 
 	while (start < end)
 	{
-
 		int moveCount = 0;
 		QuoridorPos moves[8];
 
 		QuoridorPos position = tab[start++];
 
-
 		moveCount = QuoridorCore_getMoves(self, moves, position, nbr);
 		nbr = 0;
 
-		int tmp = start -1;
+		int tmp = start - 1;
 		if ((playerID == 0 && position.j == self->gridSize - 1) ||
-			(playerID == 1 && position.j == 0)) {
-
+			(playerID == 1 && position.j == 0))
+		{
 			while (tmp != -1)
 			{
-				//printf("(%d,%d) ", tab[tmp].i, tab[tmp].j);
 				size++;
 				tmp = parent[tmp];
 			}
-			return size-1;
 
+			free(parent);
+			free(explored);
+			return size; // Retourne la taille du chemin trouvé
 		}
 
 		for (int i = 0; i < moveCount; i++)
@@ -1081,5 +1079,8 @@ int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab)
 			}
 		}
 	}
-	return NULL;
+
+	free(parent);
+	free(explored);
+	return -1; // Retourne -1 si aucun chemin n'est trouvé
 }
