@@ -8,6 +8,7 @@
 
 #include "settings.h"
 
+
 /// @brief Taille maximale (largeur et hauteur) du plateau du jeu Quoridor.
 #define MAX_GRID_SIZE 9
 
@@ -91,6 +92,9 @@ typedef struct QuoridorCore
 
     /// @brief Nombre de murs restants pour chaque joueur.
     int wallCounts[2];
+
+
+
 } QuoridorCore;
 
 /// @brief Crée une instance du jeu Quoridor.
