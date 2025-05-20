@@ -5,7 +5,8 @@
 */
 
 #include "core/quoridor_core.h"
-#include "core/quoridor_ai.h"
+#include "core/quoridor_ai.h" 
+
 
 void QuoridorCore_updateValidMoves(QuoridorCore *self);
 bool QuoridorCore_isFeasible(QuoridorCore *self);
@@ -15,7 +16,14 @@ QuoridorCore *QuoridorCore_create()
     QuoridorCore *self = (QuoridorCore *)calloc(1, sizeof(QuoridorCore));
     AssertNew(self);
 
+
+
+
     QuoridorCore_reset(self, 9, 10, 0);
+
+
+
+
 
     return self;
 }
