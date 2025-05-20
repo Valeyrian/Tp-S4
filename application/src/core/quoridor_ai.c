@@ -6,10 +6,8 @@
 
 #include "core/quoridor_core.h"
 #include "core/utils.h"
-#include "core/graph.h"
-#include "core/shortest_path.h"
 #include "core/quoridor_ai.h"
-
+#include "limits.h"
 
 #define MAX_BEST_WALLS 3
 
@@ -44,180 +42,6 @@ void AIData_reset(void* data)
 		ListData_insertFirstPopLast(database, clear); 
 
 	return;
-}
-
-Graph* QuoridorCore_initGraph(QuoridorCore* self, int playerID)
-{
-
-	Graph* graph = Graph_create(81);
-	for (int i = 0; i < 9; i++)
-		for (int j = 0; j < 9; j++)
-		{
-
-			QuoridorPos moves[8] = { 0 };
-			QuoridorPos pos;
-			pos.i = i;
-			pos.j = j;
-			int moveCount = 0;
-			if (self->positions[playerID].i == pos.i && self->positions[playerID].j == pos.j)
-				moveCount = QuoridorCore_getMoves(self, moves, pos, 1);
-			else
-				moveCount = QuoridorCore_getMoves(self, moves, pos, 0);
-
-
-			for (int k = 0; k < moveCount; k++)
-			{
-				Graph_setArc(graph, pos.i * 9 + pos.j, moves[k].i * 9 + moves[k].j, 1);
-				Graph_setArc(graph, moves[k].i * 9 + moves[k].j, pos.i * 9 + pos.j, 1);
-			}
-		}
-	return graph;
-}
-
-///@brief calcul l'heuristique d'un point de la grille
-int heuristic(QuoridorCore* self, int node, int player) 
-{
-
-	int goal = (player == 0) ? (self->gridSize - 1) : 0; // la ligne d'arrivée du joueur
-
-	int col = node % self->gridSize; // on recupere la colonne
-
-	// On calcule la distance de Manhattan entre le noeud et la ligne d'arrivée
-	return abs(goal - col);
-}
-
-//@brief fonction pour remonter le chemin et le recup dans le bon sens
-void pathRefinder(QuoridorCore *self, int* cameFrom, int current, QuoridorPos* path, int* pathSize) 
-{
-	
-	int boardSize = self->gridSize * self->gridSize; // taille du tableau de chemin
-	int* temp = calloc(boardSize, sizeof(int)); 
-
-	int count = 0;
-
-
-	// On remonte le chemin en partant du noeud courant jusqu'à la racine et dcp stocker a l'enver
-	while (cameFrom[current] != -1) 
-	{
-		temp[count++] = current;
-		current = cameFrom[current];
-	}
-	temp[count++] = current;
-
-	*pathSize = count;
-
-	//on retourne le chemin dans le bon sens et on separe i et j
-	for (int i = 0; i < count; i++) {
-		int node = temp[count - 1 - i];
-		path[i].i = node / self->gridSize;
-		path[i].j = node % self->gridSize;
-	}
-
-	free(temp); // on libere le tableau temporaire
-}
-
-//focntion pour prend le moin couteux dans ceux accesible
-int extractLowestF(bool* inOpenSet, int* fScore, int size) 
-{
-	int minF = INT_MAX;
-	int bestNode = -1;
-
-	for (int i = 0; i < size; i++) {
-		if (inOpenSet[i] && fScore[i] < minF) {
-			minF = fScore[i];
-			bestNode = i;
-		}
-	}
-	return bestNode;
-}
-
-/// @Calcule le plus court chemin entre la position du joueur et sa zone d'arrivée. A*
-/// chokbar c'est pas recursif
-void AStarShortestPath(QuoridorCore *self ,Graph* graph, int player, QuoridorPos* path, int* pathSize) 
-{
-
-
-	int start = self->positions[player].i * self->gridSize + self->positions[player].j; // position de depart du joueur  
-
-
-	
-	int boardLength = self->gridSize * self->gridSize; 
-
-	int* gScore = calloc(boardLength, sizeof(int));  //la distance entre le point de départ et mtn
-	int* fScore = calloc(boardLength, sizeof(int));  //gscore + heuristique au point
-	int* cameFrom = calloc(boardLength, sizeof(int)); //tableau du chemin parcourue
-	
-	bool* inOpenSet = calloc(boardLength, sizeof(bool));  //tableau de boolen pour savoir si le point est dans l'ensemble ouvert (deja vue)
-	if (!inOpenSet)
-		return;
-	for (int i = 0; i < boardLength; i++) 
-	{
-		gScore[i] = INT_MAX;
-		fScore[i] = INT_MAX; 
-		cameFrom[i] = -1; 
-	}
-
-	gScore[start] = 0;
-	fScore[start] = heuristic(self,start, player); 
-	inOpenSet[start] = true; //faut bien commencer qlq part
-
-	while (true) 
-	{
-		int current = extractLowestF(inOpenSet, fScore, boardLength); //on prend le plus petit fscore de l'ensemble ouvert si on trouve pas on prendrra le suivant
-		if (current == -1)
-			break; // Open set empty → pas de chemin
-
-
-		
-		int col = current % self->gridSize;  // extrait j (la colonne)  
-
-		if (player == 0) // test de si on est arrive joueur 0 et 1  
-		{
-			if (col == self->gridSize - 1)
-			{
-				pathRefinder(self, cameFrom, current, path, pathSize); 
-				return;
-			}
-		}
-		else if (player == 1)
-		{
-			if (col == 0)
-			{
-				pathRefinder(self, cameFrom, current, path, pathSize); 
-				return;
-			}
-		}
-		
-		inOpenSet[current] = false; // on marque le noeud comme visité
-
-		ArcList* neighbors = Graph_getArcList(graph, current); //on recupere tt les voisins
-		
-		while (neighbors != NULL) 
-		{
-			int neighbor = neighbors->target; 
-			int tentativeG = gScore[current] + 1; // poids 1 car case adjacente (a check a cause de mouton et cheval)
-
-			if (tentativeG < gScore[neighbor]) //verifie si le chemin pour aller vers le voisin et plus cout en que le chemin deja connu
-			{
-				cameFrom[neighbor] = current; 
-				gScore[neighbor] = tentativeG;
-				fScore[neighbor] = tentativeG + heuristic(self,neighbor, player);   
-
-				if (!inOpenSet[neighbor])  //si le voisin n'est pas dans l'ensemble a visiter on l'ajoute
-				{
-					inOpenSet[neighbor] = true;
-				}
-			}
-
-			neighbors = neighbors->next; //on passe au voisin suivant
-		}
-	}
-
-	*pathSize = -1; // Aucun chemin trouvé
-	free(gScore); 
-	free(fScore);   
-	free(cameFrom); 
-	free(inOpenSet); 
 }
 
 /// @brief Calcule le plus court chemin entre la position du joueur et sa zone d'arrivée. disjktra
@@ -335,7 +159,6 @@ float isTheMoveWorth(int i, int j, void* aiData)
 
 	return 0;
 }
-
 
 
 
@@ -520,11 +343,12 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
   const float beta = INFINITY;
 
 
-  
 
   ListData* database;
 
-  float childValue = QuoridorCore_minMax(self, self->playerID, 0, 2, alpha, beta, &childTurn,aiData);
+  float childValue = QuoridorCore_minMax(self, self->playerID, 0, 4, alpha, beta, &childTurn,aiData);
+
+
 
   QuoridorData turn;
   
