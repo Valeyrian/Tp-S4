@@ -491,10 +491,12 @@ void QuoridorCore_moveTo(QuoridorCore *self, int i, int j)
 
 	if (self->playerID == 0 && j == self->gridSize - 1) // joueur 0 a gagné   
 	{
+        printf("aaa");
 		self->state = QUORIDOR_STATE_P0_WON; 
 	}
 	else if (self->playerID == 1 && j == 0) // joueur 1 a gagné
 	{
+        printf("aaa");
 		self->state = QUORIDOR_STATE_P1_WON; 
 	}
     // TODO
