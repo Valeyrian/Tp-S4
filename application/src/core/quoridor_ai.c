@@ -13,9 +13,11 @@
 
 #define MAX_BEST_WALLS 3
 
-QuoridorData* AIData_create()
+ListData* AIData_create()
 {
-	QuoridorData clear = { 0, 0, 0, 0 };
+	QuoridorData clear;
+	memset(&clear, 0, sizeof(QuoridorData)); 
+
 	ListData* data = ListData_create();
 
 	for (int i = 0; i < MAX_BACK_ANALYS; i++)
@@ -24,19 +26,22 @@ QuoridorData* AIData_create()
 	return data;
 }
 
-void AIData_destroy(ListData* database)
+void AIData_destroy(void *data)
 {
+	ListData* database = (ListData*)data;
 	ListData_destroy(database);
 	return;
 }
 
 
-void AIData_reset(ListData* database)
+void AIData_reset(void* data)
 {
-	QuoridorData clear = { 0, 0, 0, 0 };
+	ListData* database = (ListData*)data;
+	QuoridorData clear;
+	memset(&clear, 0, sizeof(QuoridorData)); // on remet a zero le coup 
 
 	for (int i = 0; i < MAX_BACK_ANALYS; i++)
-		ListData_insertFirstPopLast(database, clear);
+		ListData_insertFirstPopLast(database, clear); 
 
 	return;
 }
@@ -270,7 +275,7 @@ void QuoridorCore_getShortestPath(QuoridorCore* self, int playerID, QuoridorPos*
 /// @param self Instance du jeu Quoridor.
 /// @param playerID Indice du joueur à évaluer (0 ou 1).
 /// @return Une estimation numérique de l'avantage du joueur playerID.
-static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
+static float QuoridorCore_computeScore(QuoridorCore* self, int playerID, void * aiData)
 {
 	int playerA = self->playerID;
 	int playerB = self->playerID ^ 1;
@@ -280,28 +285,59 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
 
 	QuoridorPos playerApath[MAX_GRID_SIZE * MAX_GRID_SIZE];
 	QuoridorPos playerBpath[MAX_GRID_SIZE * MAX_GRID_SIZE];
+	
 	distA = BFS_search2(self, playerA, playerApath);
 	distB = BFS_search2(self, playerB, playerBpath);
 
 	int wallsA = self->wallCounts[playerA];
 	int wallsB = self->wallCounts[playerB];
 	float score = (float)(distB - distA);
-	// Pondérer les murs à petite échelle (ex : 0.5 par mur)
-	if(score > 0)
-		score += 0.5f * (wallsA - wallsB);
-	if(score < 0)
-		score -= 0.1f * (wallsA - wallsB);
+	
 
-	if (distB == 0)
-		score -= 5.f;
-	if (distA == 0)
-	{
-		score += 5.f;
-	}
+
 	// 3. Ajouter un bruit aléatoire pour casser les égalités (pas obligatoire mais pratique)
     score += Float_randAB(-0.1f, +0.1f); 
 	return score;
 }
+
+
+float isTheMoveWorth(int i, int j, void* aiData)
+{
+	ListData* data = (ListData*)aiData;
+	NodeData* current = data->head;
+
+	int count = 0;
+	for (int k = 0; k < MAX_BACK_ANALYS; k++)
+	{
+		if (current->data.action == QUORIDOR_MOVE_TO)
+		{
+			if (current->data.pos.i == i && current->data.pos.j == j)
+			{
+				count++;
+			}
+		}
+	}
+	
+	if (count >= 2)
+	{
+		switch (count)
+		{
+		case 2 : 
+			return -1;
+		case 3 :
+			return -2;
+		case 4 :
+			return -4;
+		default:
+			return -5;
+		}
+	}
+
+	return 0;
+}
+
+
+
 
 /// @brief Applique l'algorithme Min-Max (avec élagage alpha-bêta) pour déterminer le coup joué par l'IA.
 /// Cette fonction explore récursivement une partie de l'arbre des coups possibles jusqu'à une profondeur maximale donnée.
@@ -313,13 +349,19 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
 /// @param beta Meilleure valeur actuellement garantie pour le joueur minimisant.
 /// @param turn Pointeur vers une variable où sera enregistré le meilleur coup trouvé (à la racine).
 /// @return L'évaluation numérique de la position courante, selon la fonction heuristique.
-static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth, int maxDepth, float alpha, float beta, QuoridorTurn* turn)
+static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth, int maxDepth, float alpha, float beta, QuoridorTurn* turn, void* aiData)
 {
 
 
     if (currDepth >= maxDepth) //si on atteint le profondzeur max
     {
-        return QuoridorCore_computeScore(self, playerID);
+		int score = QuoridorCore_computeScore(self, playerID,aiData);  
+		
+
+		/*if (turn->action == QUORIDOR_MOVE_TO)
+			score += isTheMoveWorth(turn->i, turn->j, aiData);*/
+		
+		return score;
     }
     int best = 0;
     int IsWall = 0;
@@ -341,8 +383,13 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
         QuoridorCore copy = *self;
         copy.positions[playerID].i = moves[k].i;
         copy.positions[playerID].j = moves[k].j;
+		turn->action = QUORIDOR_MOVE_TO;
+		turn->i = copy.positions[playerID].i;
+		turn->j = copy.positions[playerID].j;
 
-        float tmp = QuoridorCore_minMax(&copy, playerID ^ 1, currDepth + 1, maxDepth, alpha, beta, turn);
+
+
+        float tmp = QuoridorCore_minMax(&copy, playerID ^ 1, currDepth + 1, maxDepth, alpha, beta, turn, aiData);
 
         if (maximizing) //élégage aplha
         {
@@ -380,7 +427,6 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
 
 	getBestWall(self, playerID, 999, walls,&wallCount); //on recupere les meilleurs murs a jouer collectFewWallsInFrontOfPath collectAllWallsNearPath
 
-
 		
     for (int m = 0; m < wallCount; m++) //murs 
     {
@@ -398,7 +444,7 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
             gamecopy.vWalls[walls[m].pos.i+1][walls[m].pos.j] = WALL_STATE_END;
         }
         gamecopy.wallCounts[playerID]--; 
-        float tmp = QuoridorCore_minMax(&gamecopy, playerID ^ 1, currDepth + 1, maxDepth, alpha, beta, turn);
+        float tmp = QuoridorCore_minMax(&gamecopy, playerID ^ 1, currDepth + 1, maxDepth, alpha, beta, turn, aiData);
 
 		if (maximizing) //élégage aplha
 		{
@@ -436,6 +482,7 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
         turn->j = moves[best].j;
 
 
+
     }
     else
     {
@@ -471,7 +518,24 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 
   const float alpha = -INFINITY;
   const float beta = INFINITY;
-  float childValue = QuoridorCore_minMax(self, self->playerID, 0, 7, alpha, beta, &childTurn);
+
+
+  
+
+  ListData* database;
+
+  float childValue = QuoridorCore_minMax(self, self->playerID, 0, 2, alpha, beta, &childTurn,aiData);
+
+  QuoridorData turn;
+  
+  turn.action = childTurn.action;
+  turn.pos.i = childTurn.i;
+  turn.pos.j = childTurn.j;
+  turn.score = 0; //0 pour l'instant 
+  
+  AIData_add((ListData*)aiData, turn);
+	
+
   return childTurn;
 
 }
@@ -733,7 +797,8 @@ void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize
 
 void collectFewWallsInFrontOfPath(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall* candidat, int* candidatCount) //regarde les murs bien orient au debut du chemin
 {
-	int maxSteps = min(pathSize - 1, 4); // examine les 3 premiere case 
+	short int nbrOfcaseToAnalysis = 4; // nombre de case a analyser
+	int maxSteps = (pathSize - 1) < nbrOfcaseToAnalysis ? (pathSize - 1) : nbrOfcaseToAnalysis; // examine les 4 premiere case 
 	int maxWalls = 32; // nombre max de murs candidats 
 
 	
@@ -849,7 +914,7 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 
 	QuoridorWall attemptingWalls[100]; // ca sera les mur a tester
 
-	collectFewWallsInFrontOfPath(self, enemyPath, actualEnemySize, &attemptingWalls, &attemptingCount); 
+	collectFewWallsInFrontOfPath(self, enemyPath, actualEnemySize, attemptingWalls, &attemptingCount);  
 
 	QuoridorCore copy = *self;
 

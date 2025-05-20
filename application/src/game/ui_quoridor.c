@@ -431,7 +431,7 @@ void UIQuoridor_restartQuoridor(UIQuoridor *self)
 
     for (int i = 0; i < 2; i++)
     {
-        AIData_reset(self->m_aiData);
+        AIData_reset(self->m_aiData[i]);
     }
 
     self->m_aiTurn.action = QUORIDOR_ACTION_UNDEFINED;
