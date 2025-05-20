@@ -9,8 +9,7 @@
 #include "settings.h"
 #include "core/quoridor_core.h"
 #include "core/utils.h"
-#include "core/graph.h"
-#include "core/shortest_path.h"
+
 #include "core/listData.h"
 
 
@@ -69,7 +68,7 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth, int maxDepth, float alpha, float beta, QuoridorTurn* turn, void* aiData);
 
 /// computeScore
-static float QuoridorCore_computeScore(QuoridorCore* self, int playerID, void* aiData);
+static float QuoridorCore_computeScore(QuoridorCore* self, int playerID);
 
 
 /// @brief Calcule le plus court chemin entre la position du joueur et sa zone d'arrivée.
@@ -80,7 +79,8 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID, void* a
 ///     et la position actuelle du joueur à l'indice (size - 1).
 /// @param size Adresse d'un entier dans lequel sera écrite la taille du chemin.
 ///     La distance est alors égale à (size - 1).
-void QuoridorCore_getShortestPath(QuoridorCore *self, int playerID, QuoridorPos *path, int *size,Graph* graph);
+void QuoridorCore_getShortestPath(QuoridorCore *self, int playerID, QuoridorPos *path, int *size);
+int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves, QuoridorPos pos, int player);
 
 /// @brief Fonction spécifique à l'évaluation sur Moodle.
 /// Calcule le coup joué par l'IA avec une profondeur de 2.
