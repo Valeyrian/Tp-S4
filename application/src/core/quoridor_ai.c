@@ -9,7 +9,7 @@
 #include "core/quoridor_ai.h"
 #include "limits.h"
 
-#define MAX_BEST_WALLS 5
+#define MAX_BEST_WALLS 3
 
 ListData* AIData_create()
 {
@@ -30,6 +30,7 @@ void AIData_destroy(void *data)
 	ListData_destroy(database);
 	return;
 }
+
 
 void AIData_reset(void* data)
 {
@@ -160,6 +161,7 @@ float isTheMoveWorth(int i, int j, void* aiData)
 }
 
 
+
 /// @brief Applique l'algorithme Min-Max (avec élagage alpha-bêta) pour déterminer le coup joué par l'IA.
 /// Cette fonction explore récursivement une partie de l'arbre des coups possibles jusqu'à une profondeur maximale donnée.
 /// @param self Instance du jeu Quoridor.
@@ -222,20 +224,22 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
                 {
                     best = k;
                     IsWall = 0;
-
                 }
             }
-            alpha = value;
-            if (alpha > beta)
-                break;
+			if (alpha > beta)
+				return value;
+			if (value > alpha)
+				alpha = value;
+
         }
         if (!maximizing) //élagage béta
         {
             if (tmp <= value)
                 value = tmp;
-            beta = value;
-            if (beta < alpha)
-                break;
+			if (value < alpha)
+				return value;
+			if (value < beta)
+				beta = value;
         }
     }
 	QuoridorWall walls[MAX_BEST_WALLS] = { 0 };  //on initialise le tableau de 5 murs 
@@ -265,31 +269,33 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
         gamecopy.wallCounts[playerID]--; 
         float tmp = QuoridorCore_minMax(&gamecopy, playerID ^ 1, currDepth + 1, maxDepth, alpha, beta, turn, aiData);
 
-        if (maximizing)//élagage aplha
-        {
+		if (maximizing) //élégage aplha
+		{
 
-            if (tmp >= value)
-            {
-                value = tmp;
-                if (currDepth == 0)
-                {
-                    best = m;
-                    IsWall = 1;
+			if (tmp >= value)
+			{
+				value = tmp;
+				if (currDepth == 0)
+				{
+					best = m;
+					IsWall = 1;
+				}
+			}
+			if (alpha > beta)
+				return value;
+			if (value > alpha)
+				alpha = value;
 
-                }
-            }
-            alpha = value;
-            if (alpha > beta)
-                break;
-        }
-        if (!maximizing)//élagage béta
-        {
-            if (tmp <= value)
-                value = tmp;
-            beta = value;
-            if (beta < alpha)
-                break;
-        }
+		}
+		if (!maximizing) //élagage béta
+		{
+			if (tmp <= value)
+				value = tmp;
+			if (value < alpha)
+				return value;
+			if (value < beta)
+				beta = value;
+		}
 
     }
     if (IsWall == 0)
@@ -336,11 +342,12 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
   const float alpha = -INFINITY;
   const float beta = INFINITY;
 
-  
+
 
   ListData* database;
 
   float childValue = QuoridorCore_minMax(self, self->playerID, 0, 4, alpha, beta, &childTurn,aiData);
+
 
 
   QuoridorData turn;
@@ -352,6 +359,7 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
   
   AIData_add((ListData*)aiData, turn);
 	
+
   return childTurn;
 
 }
@@ -808,11 +816,18 @@ int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab)
     int visited[MAX_GRID_SIZE][MAX_GRID_SIZE] = { 0 };
     int distance = 0;
 
-    QuoridorPos predecessor[MAX_GRID_SIZE][MAX_GRID_SIZE] = { 0 };
-    QuoridorPos queue[MAX_PATH_LEN];
+    QuoridorPos predecessor[MAX_GRID_SIZE][MAX_GRID_SIZE] = { -1 };
+	for(int i = 0;i<MAX_GRID_SIZE;i++)
+		for (int j = 0; j < MAX_GRID_SIZE; j++)
+		{
+			predecessor[i][j].i = -1;
+			predecessor[i][j].j = -1;
+		}
+
+    QuoridorPos queue[MAX_PATH_LEN * 2];
     QuoridorPos initalPos = self->positions[playerID];
     queue[0] = self->positions[playerID];
-    visited[self->positions[playerID].i][self->positions[playerID].j] = 1;
+    visited[self->positions[playerID].i][self->positions[playerID].j] = true;
      
    while (front < back) {
        QuoridorPos current = queue[front];
@@ -856,7 +871,7 @@ int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab)
 
                temp = predecessor[temp.i][temp.j];
                distance++;
-               if (temp.i == 0 && temp.j == 0)
+               if (temp.i == -1 && temp.j == -1)
                    break;
            }
 		   temp = current;
