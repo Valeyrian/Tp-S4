@@ -6,8 +6,6 @@
 
 #include "core/quoridor_core.h"
 #include "core/utils.h"
-#include "core/graph.h"
-#include "core/shortest_path.h"
 #include "core/quoridor_ai.h"
 #include "limits.h"
 
@@ -206,7 +204,6 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
         QuoridorCore copy = *self;
         copy.positions[playerID].i = moves[k].i;
         copy.positions[playerID].j = moves[k].j;
-		
 		turn->action = QUORIDOR_MOVE_TO;
 		turn->i = copy.positions[playerID].i;
 		turn->j = copy.positions[playerID].j;
@@ -344,6 +341,7 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
   ListData* database;
 
   float childValue = QuoridorCore_minMax(self, self->playerID, 0, 4, alpha, beta, &childTurn,aiData);
+
 
   QuoridorData turn;
   
