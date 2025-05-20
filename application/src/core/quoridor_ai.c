@@ -10,22 +10,35 @@
 #include "core/shortest_path.h"
 #include "core/quoridor_ai.h"
 
+
 #define MAX_BEST_WALLS 5
 
-void* AIData_create(QuoridorCore* core)
+QuoridorData* AIData_create()
 {
-	// Cette fonction n'est utile que si vous avez besoin de mémoriser des informations sur les coups précédents de l'IA.
+	QuoridorData clear = { 0, 0, 0, 0 };
+	ListData* data = ListData_create();
 
-	return NULL;
+	for (int i = 0; i < MAX_BACK_ANALYS; i++)
+		ListData_insertFirst(data, clear);
+
+	return data;
 }
 
-void AIData_destroy(void* self)
+void AIData_destroy(ListData* database)
 {
-	if (!self) return;
+	ListData_destroy(database);
+	return;
 }
 
-void AIData_reset(void* self)
+
+void AIData_reset(ListData* database)
 {
+	QuoridorData clear = { 0, 0, 0, 0 };
+
+	for (int i = 0; i < MAX_BACK_ANALYS; i++)
+		ListData_insertFirstPopLast(database, clear);
+
+	return;
 }
 
 Graph* QuoridorCore_initGraph(QuoridorCore* self, int playerID)
@@ -905,51 +918,71 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 
 int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab)
 {
-	int parent[MAX_GRID_SIZE * MAX_GRID_SIZE] = { 0 };
-	int explored[MAX_GRID_SIZE * MAX_GRID_SIZE] = { 0 };
-	tab[0] = self->positions[playerID];
-	explored[self->positions[playerID].i * self->gridSize + self->positions[playerID].j] = 1;
+	    int gridSize = self->gridSize;
+    int front = 0, back = 1;
+    int visited[MAX_GRID_SIZE][MAX_GRID_SIZE] = { 0 };
+    int distance = 0;
 
-	parent[0] = -1;
-	int start = 0, end = 1;
-	int nbr = 1;
+    QuoridorPos predecessor[MAX_GRID_SIZE][MAX_GRID_SIZE] = { 0 };
+    QuoridorPos queue[MAX_PATH_LEN];
+    QuoridorPos initalPos = self->positions[playerID];
+    queue[0] = self->positions[playerID];
+    visited[self->positions[playerID].i][self->positions[playerID].j] = 1;
+     
+   while (front < back) {
+       QuoridorPos current = queue[front];
+       front++;
 
-	int size = 0;
+       int i = current.i;
+       int j = current.j;
+       
+       if (!QuoridorCore_hasWallAbove(self, i, j) && i>0 && !visited[i-1][j]) {
+           queue[back].i = i-1;
+           queue[back].j = j;
+           predecessor[i - 1][j] = current;
+           visited[i - 1][j] = 1;
+           back++;
+       }
+       if (!QuoridorCore_hasWallBelow(self, i, j) && i < MAX_GRID_SIZE - 1 && !visited[i + 1][j]) {
+           queue[back].i = i + 1;
+           queue[back].j = j;
+           predecessor[i + 1][j] = current;
+           visited[i + 1][j] = 1;
+           back++;
+       }
+       if (!QuoridorCore_hasWallLeft(self, i, j) && j > 0 && !visited[i][j - 1]) {
+           queue[back].i = i;
+           queue[back].j = j - 1;
+           predecessor[i][j - 1] = current;
+           visited[i][j - 1] = 1;
+           back++;
+       }
+       if (!QuoridorCore_hasWallRight(self, i, j) && j < MAX_GRID_SIZE - 1 && !visited[i][j + 1]) {
+           queue[back].i = i;
+           queue[back].j = j + 1;
+           predecessor[i][j + 1] = current;
+           visited[i][j + 1] = 1;
+           back++;
+       }
 
-	while (start < end)
-	{
-		int moveCount = 0;
+       if ((current.j == 0 && playerID == 1) || (playerID == 0 && current.j == gridSize - 1)) {
+           QuoridorPos temp = current;
+           for (int i = 0; i < MAX_PATH_LEN; i++) {
 
-		QuoridorPos moves[8] = { 0,0 };
+               temp = predecessor[temp.i][temp.j];
+               distance++;
+               if (temp.i == 0 && temp.j == 0)
+                   break;
+           }
+		   temp = current;
+		   for (int i = distance - 1; i >= 0; i--) {
+			   tab[i] = temp;
+			   temp = predecessor[temp.i][temp.j];
 
-		QuoridorPos position = tab[start++];
 
-		moveCount = QuoridorCore_getMoves(self, moves, position, nbr);
-
-		nbr = 0;
-
-		int tmp = start - 1;
-		if ((playerID == 0 && position.j == self->gridSize - 1) ||
-			(playerID == 1 && position.j == 0))
-		{
-			while (tmp != -1)
-			{
-				size++;
-				tmp = parent[tmp];
-			}
-			return size; // Retourne la taille du chemin trouvé
-		}
-
-		for (int i = 0; i < moveCount; i++)
-		{
-			if (explored[moves[i].i * self->gridSize + moves[i].j] == 0)
-			{
-				tab[end] = moves[i];
-				parent[end++] = start - 1;
-				explored[moves[i].i * self->gridSize + moves[i].j] = 1;
-			}
-		}
-	}
-
+		   }
+		   return distance;
+       }
+   }
 	return -1; // Retourne -1 si aucun chemin n'est trouvé
 }
