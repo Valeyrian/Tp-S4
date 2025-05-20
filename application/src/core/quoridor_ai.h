@@ -80,7 +80,7 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID, void* a
 ///     et la position actuelle du joueur à l'indice (size - 1).
 /// @param size Adresse d'un entier dans lequel sera écrite la taille du chemin.
 ///     La distance est alors égale à (size - 1).
-void QuoridorCore_getShortestPath(QuoridorCore *self, int playerID, QuoridorPos *path, int *size,Graph* graph);
+//void QuoridorCore_getShortestPath(QuoridorCore *self, int playerID, QuoridorPos *path, int *size,Graph* graph);
 
 /// @brief Fonction spécifique à l'évaluation sur Moodle.
 /// Calcule le coup joué par l'IA avec une profondeur de 2.
@@ -97,8 +97,6 @@ INLINE QuoridorTurn QuoridorCore_computeMoodleTurn(QuoridorCore* self, void* aiD
 
 int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab);
 
+int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves, QuoridorPos pos, int player);
 
-INLINE void* AIData_add(ListData* database, QuoridorData data)
-{
-    ListData_insertFirstPopLast(database, data);
-}
+void AIData_add(ListData* database, QuoridorData data);
