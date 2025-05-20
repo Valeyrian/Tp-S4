@@ -110,11 +110,16 @@ void AIData_add(ListData* database, QuoridorData data)
 static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
 
 {
-    int playerA = self->playerID;
-    int playerB = self->playerID ^ 1;
 
-    int distA = 0;
-    int distB = 0;
+    srand(0);
+	int playerA = playerID;
+	int playerB = playerID ^ 1;
+
+    //int playerA = self->playerID;
+    //int playerB = self->playerID ^ 1;
+
+/*   int distA = 0;
+   int distB = 0;
 
     QuoridorPos playerApath[MAX_GRID_SIZE * MAX_GRID_SIZE];
     QuoridorPos playerBpath[MAX_GRID_SIZE * MAX_GRID_SIZE];
@@ -125,12 +130,22 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
     int wallsA = self->wallCounts[playerA];
     int wallsB = self->wallCounts[playerB];
     float score = (float)(distB - distA);
+*/
 
 
+
+
+
+	int wallsA = self->wallCounts[playerA];
+	int wallsB = self->wallCounts[playerB];
+	float score = (float)(distB - distA);
+	if(playerA == 1)
+    printf("pos = %d,%d   %.2f\n", self->positions[playerA].i, self->positions[playerA].j,score);
 
     // 3. Ajouter un bruit aléatoire pour casser les égalités (pas obligatoire mais pratique)
    // score += Float_randAB(-0.3f, +0.3f);
-    return score;
+    //return score;
+
 
 
 }
@@ -189,13 +204,13 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
     if (self->state != QUORIDOR_STATE_IN_PROGRESS) //si un des joueurs a gagné
     {
         if (self->state == QUORIDOR_STATE_P0_WON && playerID == 0)
-            return INFINITY;
-        if (self->state == QUORIDOR_STATE_P1_WON && playerID == 0)
-            return -INFINITY;
+            return 1000.f - currDepth;
+        if (self->state == QUORIDOR_STATE_P1_WON && playerID == 0) ///changer (en fonction de curdepth)
+            return -1000.f + currDepth;
         if (self->state == QUORIDOR_STATE_P0_WON && playerID == 1)
-            return -INFINITY;
+            return -1000.f + currDepth;
         if (self->state == QUORIDOR_STATE_P1_WON && playerID == 1)
-            return INFINITY;
+            return 1000.f - currDepth;
     }
     else if (currDepth >= maxDepth) //si on atteint le profondzeur max
     {
@@ -214,42 +229,47 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
     float value = maximizing ? -INFINITY : INFINITY;
 
 
-    int moveCount = 0;
-
-    QuoridorPos moves[8];
-    moveCount = QuoridorCore_getMoves(self, moves, self->positions[playerID], 1);
-
-  
-    for (int k = 0; k < moveCount; k++) //mouvements
+    for (int i = 0; i < MAX_GRID_SIZE; i++)
     {
-        printf("1\n");
+        for (int j = 0; j < MAX_GRID_SIZE; j++)
 
-        QuoridorCore copy = *self;
-        copy.positions[playerID].i = moves[k].i;
-        copy.positions[playerID].j = moves[k].j;
-
-        turn->action = QUORIDOR_MOVE_TO;
-        turn->i = copy.positions[playerID].i;
-        turn->j = copy.positions[playerID].j;
-
-
-
-
-        float tmp = QuoridorCore_minMax(&copy, playerID ^ 1, currDepth + 1, maxDepth, alpha, beta, turn, aiData);
-
-        if (maximizing) //élégage aplha
         {
-
-            if (tmp >= value)
+            if (QuoridorCore_canMoveTo(self, i, j))
             {
-                value = tmp;
-                if (currDepth == 0)
-                {
-                    best = k;
-                    IsWall = 0;
+                QuoridorCore copy = *self;
+                QuoridorCore_moveTo(&copy, i, j);
+                float tmp = QuoridorCore_minMax(&copy, playerID, currDepth + 1, maxDepth, alpha, beta, &childTurn, aiData);
 
+                if (maximizing) //élégage aplha
+                {
+
+                    if (tmp >= value)
+                    {
+                        value = tmp;
+                        turn->action = QUORIDOR_MOVE_TO;
+                        turn->i = i;
+                        turn->j = j;
+                    }
+                    //alpha = value; ///////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    //if (alpha > beta)
+                    //    return value;
+                }
+                else
+                {
+                    if (tmp <= value)
+                    {
+                        value = tmp;
+                        turn->action = QUORIDOR_MOVE_TO;
+                        turn->i = i;
+                        turn->j = j;
+                    }
+                    //beta = value;
+                    //if (beta < alpha)
+                    //    break;
                 }
             }
+
+  /*
             alpha = value;
 
             if (alpha >= beta)
@@ -264,95 +284,67 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
 
             if (beta < alpha)
                 break;
+                */
+
         }
     }
-    QuoridorWall* walls = (QuoridorWall*)calloc(sizeof(QuoridorWall), MAX_BEST_WALLS);  //on initialise le tableau de 5 murs 
+
+
+
+    QuoridorWall walls[MAX_BEST_WALLS] = { 0 };  //on initialise le tableau de 5 murs 
     int wallCount = 0;
     getBestWall(self, playerID, 999, walls, &wallCount); //on recupere les meilleurs murs a jouer collectFewWallsInFrontOfPath collectAllWallsNearPath
 
     for (int m = 0; m < wallCount; m++) //murs
 
     {
-        if (self->wallCounts[playerID] <= 0)
-            continue;
-        printf("2\n");
 
         QuoridorCore gamecopy = *self;
+        
+        QuoridorCore_playWall(&gamecopy, walls[m].type, walls[m].pos.i, walls[m].pos.j);
 
-        if (walls[m].type == WALL_TYPE_HORIZONTAL)
-        {
-            gamecopy.hWalls[walls[m].pos.i][walls[m].pos.j] = WALL_STATE_START;
-            gamecopy.hWalls[walls[m].pos.i][walls[m].pos.j + 1] = WALL_STATE_END;
+        float tmp = QuoridorCore_minMax(&gamecopy, playerID, currDepth + 1, maxDepth, alpha, beta, &childTurn, aiData);
 
-        }
-        if (walls[m].type == WALL_TYPE_VERTICAL)
-        {
-            gamecopy.vWalls[walls[m].pos.i][walls[m].pos.j] = WALL_STATE_START;
-            gamecopy.vWalls[walls[m].pos.i + 1][walls[m].pos.j] = WALL_STATE_END;
-        }
-        gamecopy.wallCounts[playerID]--;
-        float tmp = QuoridorCore_minMax(&gamecopy, playerID ^ 1, currDepth + 1, maxDepth, alpha, beta, turn, aiData);
-
-        if (maximizing)//élagage aplha
+        if (maximizing) //élégage aplha
         {
 
             if (tmp >= value)
             {
                 value = tmp;
-                if (currDepth == 0)
-                {
-                    best = m;
-                    IsWall = 1;
-
-                }
+                if(walls[m].type == WALL_TYPE_HORIZONTAL)
+                    turn->action = QUORIDOR_PLAY_HORIZONTAL_WALL;
+                if (walls[m].type == WALL_TYPE_VERTICAL)
+                    turn->action = QUORIDOR_PLAY_VERTICAL_WALL;
+                turn->i = walls[m].pos.i;
+                turn->j = walls[m].pos.j;
             }
-            alpha = value;
+            //alpha = value; ///////////// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            //if (alpha > beta)
+            //    return value;
 
-            if (alpha >= beta)
-
-                break;
         }
-        if (!maximizing)//élagage béta
+        else
         {
             if (tmp <= value)
+            {
                 value = tmp;
-            beta = value;
 
-            if (beta <= alpha)
+                if (walls[m].type == WALL_TYPE_HORIZONTAL)
+                    turn->action = QUORIDOR_PLAY_HORIZONTAL_WALL;
+                if (walls[m].type == WALL_TYPE_VERTICAL)
+                    turn->action = QUORIDOR_PLAY_VERTICAL_WALL;
+                turn->i = walls[m].pos.i;
+                turn->j = walls[m].pos.j;
+            }
+            //beta = value;
+            //if (beta < alpha)
+            //    break;
 
-
-                break;
         }
 
     }
-    if (IsWall == 0)
-    {
-        turn->action = QUORIDOR_MOVE_TO;
-        turn->i = moves[best].i;
-        turn->j = moves[best].j;
 
-    }
-    else
-    {
-        if (walls[best].type == WALL_TYPE_HORIZONTAL)
-        {
-            turn->action = QUORIDOR_PLAY_HORIZONTAL_WALL;
-            turn->i = walls[best].pos.i;
-            turn->j = walls[best].pos.j;
-        }
-        if (walls[best].type == WALL_TYPE_VERTICAL)
-        {
-            turn->action = QUORIDOR_PLAY_VERTICAL_WALL;
-            turn->i = walls[best].pos.i;
-            turn->j = walls[best].pos.j;
-        }
-    }
-    //// Astuce :
-    //// vous devez effectuer toutes vos actions sur une copie du plateau courant.
-    //// Comme la structure QuoridorCore ne contient aucune allocation interne,
-    //// la copie s'éffectue simplement avec :
-    //// QuoridorCore gameCopy = *self;
-    free(walls);
+   // free(walls);
 
     return value;
 }
@@ -361,19 +353,29 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 {
     QuoridorTurn childTurn = { 0 };
 
-    if (self->state != QUORIDOR_STATE_IN_PROGRESS) return childTurn;
+
+	const float alpha = -INFINITY;
+	const float beta = INFINITY;
 
 
-    const float alpha = -INFINITY;
-    const float beta = INFINITY;
 
+
+	ListData* database;
+
+	float childValue = QuoridorCore_minMax(self, self->playerID, 0, 2, alpha, beta, &childTurn, aiData);
+
+
+    printf("\n\n\n");
+
+	QuoridorData turn;
 
 
     ListData* database;
 
 
-    float childValue = QuoridorCore_minMax(self, self->playerID, 0, 4, alpha, beta, &childTurn, aiData);
+ 
 
+	AIData_add((ListData*)aiData, turn);
 
     QuoridorData turn;
 
@@ -385,6 +387,7 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
     AIData_add((ListData*)aiData, turn);
 
     return childTurn;
+
 
 }
 
