@@ -11,21 +11,37 @@
 #include "core/utils.h"
 #include "core/graph.h"
 #include "core/shortest_path.h"
-#include "core/listQuor.h"
+#include "core/listData.h"
+
+#define MAX_BACK_ANALYS 5
+
+
+//// @brief Représente un mur sur le plateau de Quoridor.
+typedef struct QuoridorWall
+{
+    /// @brief Type de mur (horizontal ou vertical).
+    WallType type;
+    QuoridorPos pos;
+    int score;
+} QuoridorWall;
+
+
+
+
 /// @brief Crée les données utilisées par l'IA.
 /// @param core Instance du jeu Quoridor.
 /// @return Pointeur vers les données de l'IA créées.
-void *AIData_create(QuoridorCore *core);
+QuoridorData* AIData_create();
 
 /// @brief Détruit les données de l'IA.
 /// @param self Pointeur vers les données de l'IA à détruire.
-void AIData_destroy(void *self);
+void AIData_destroy(ListData* database); 
+
 
 /// @brief Réinitialise les données de l'IA.
 /// À appeler au début de chaque nouvelle partie.
 /// @param self Pointeur vers les données de l'IA.
-void AIData_reset(void *self);
-
+void AIData_reset(ListData* database);
 
 
 
@@ -106,3 +122,9 @@ int extractLowestF(bool* inOpenSet, int* fScore, int size);
 void AStarShortestPath(QuoridorCore* self, Graph* graph, int player, QuoridorPos* path, int* pathSize);
 
 int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab);
+
+
+INLINE void* AIData_add(ListData* database, QuoridorData data)
+{
+    ListData_insertFirstPopLast(database, data);
+}
