@@ -2,6 +2,7 @@
 #pragma once 
 
 #include "core/quoridor_ai.h" // pour QuoridorPos
+
 typedef struct QuoridorData
 {
     /// @brief Type de mur (horizontal ou vertical).

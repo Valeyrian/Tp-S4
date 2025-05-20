@@ -9,13 +9,15 @@
 #include "core/graph.h"
 #include "core/shortest_path.h"
 #include "core/quoridor_ai.h"
-
+#include "limits.h"
 
 #define MAX_BEST_WALLS 5
 
-QuoridorData* AIData_create()
+ListData* AIData_create()
 {
-	QuoridorData clear = { 0, 0, 0, 0 };
+	QuoridorData clear;
+	memset(&clear, 0, sizeof(QuoridorData)); 
+
 	ListData* data = ListData_create();
 
 	for (int i = 0; i < MAX_BACK_ANALYS; i++)
@@ -24,195 +26,23 @@ QuoridorData* AIData_create()
 	return data;
 }
 
-void AIData_destroy(ListData* database)
+void AIData_destroy(void *data)
 {
+	ListData* database = (ListData*)data;
 	ListData_destroy(database);
 	return;
 }
 
-
-void AIData_reset(ListData* database)
+void AIData_reset(void* data)
 {
-	QuoridorData clear = { 0, 0, 0, 0 };
+	ListData* database = (ListData*)data;
+	QuoridorData clear;
+	memset(&clear, 0, sizeof(QuoridorData)); // on remet a zero le coup 
 
 	for (int i = 0; i < MAX_BACK_ANALYS; i++)
-		ListData_insertFirstPopLast(database, clear);
+		ListData_insertFirstPopLast(database, clear); 
 
 	return;
-}
-
-Graph* QuoridorCore_initGraph(QuoridorCore* self, int playerID)
-{
-
-	Graph* graph = Graph_create(81);
-	for (int i = 0; i < 9; i++)
-		for (int j = 0; j < 9; j++)
-		{
-
-			QuoridorPos moves[8] = { 0 };
-			QuoridorPos pos;
-			pos.i = i;
-			pos.j = j;
-			int moveCount = 0;
-			if (self->positions[playerID].i == pos.i && self->positions[playerID].j == pos.j)
-				moveCount = QuoridorCore_getMoves(self, moves, pos, 1);
-			else
-				moveCount = QuoridorCore_getMoves(self, moves, pos, 0);
-
-
-			for (int k = 0; k < moveCount; k++)
-			{
-				Graph_setArc(graph, pos.i * 9 + pos.j, moves[k].i * 9 + moves[k].j, 1);
-				Graph_setArc(graph, moves[k].i * 9 + moves[k].j, pos.i * 9 + pos.j, 1);
-			}
-		}
-	return graph;
-}
-
-///@brief calcul l'heuristique d'un point de la grille
-int heuristic(QuoridorCore* self, int node, int player) 
-{
-
-	int goal = (player == 0) ? (self->gridSize - 1) : 0; // la ligne d'arrivée du joueur
-
-	int col = node % self->gridSize; // on recupere la colonne
-
-	// On calcule la distance de Manhattan entre le noeud et la ligne d'arrivée
-	return abs(goal - col);
-}
-
-//@brief fonction pour remonter le chemin et le recup dans le bon sens
-void pathRefinder(QuoridorCore *self, int* cameFrom, int current, QuoridorPos* path, int* pathSize) 
-{
-	
-	int boardSize = self->gridSize * self->gridSize; // taille du tableau de chemin
-	int* temp = calloc(boardSize, sizeof(int)); 
-
-	int count = 0;
-
-
-	// On remonte le chemin en partant du noeud courant jusqu'à la racine et dcp stocker a l'enver
-	while (cameFrom[current] != -1) 
-	{
-		temp[count++] = current;
-		current = cameFrom[current];
-	}
-	temp[count++] = current;
-
-	*pathSize = count;
-
-	//on retourne le chemin dans le bon sens et on separe i et j
-	for (int i = 0; i < count; i++) {
-		int node = temp[count - 1 - i];
-		path[i].i = node / self->gridSize;
-		path[i].j = node % self->gridSize;
-	}
-
-	free(temp); // on libere le tableau temporaire
-}
-
-//focntion pour prend le moin couteux dans ceux accesible
-int extractLowestF(bool* inOpenSet, int* fScore, int size) 
-{
-	int minF = INT_MAX;
-	int bestNode = -1;
-
-	for (int i = 0; i < size; i++) {
-		if (inOpenSet[i] && fScore[i] < minF) {
-			minF = fScore[i];
-			bestNode = i;
-		}
-	}
-	return bestNode;
-}
-
-/// @Calcule le plus court chemin entre la position du joueur et sa zone d'arrivée. A*
-/// chokbar c'est pas recursif
-void AStarShortestPath(QuoridorCore *self ,Graph* graph, int player, QuoridorPos* path, int* pathSize) 
-{
-
-
-	int start = self->positions[player].i * self->gridSize + self->positions[player].j; // position de depart du joueur  
-
-
-	
-	int boardLength = self->gridSize * self->gridSize; 
-
-	int* gScore = calloc(boardLength, sizeof(int));  //la distance entre le point de départ et mtn
-	int* fScore = calloc(boardLength, sizeof(int));  //gscore + heuristique au point
-	int* cameFrom = calloc(boardLength, sizeof(int)); //tableau du chemin parcourue
-	
-	bool* inOpenSet = calloc(boardLength, sizeof(bool));  //tableau de boolen pour savoir si le point est dans l'ensemble ouvert (deja vue)
-	if (!inOpenSet)
-		return;
-	for (int i = 0; i < boardLength; i++) 
-	{
-		gScore[i] = INT_MAX;
-		fScore[i] = INT_MAX; 
-		cameFrom[i] = -1; 
-	}
-
-	gScore[start] = 0;
-	fScore[start] = heuristic(self,start, player); 
-	inOpenSet[start] = true; //faut bien commencer qlq part
-
-	while (true) 
-	{
-		int current = extractLowestF(inOpenSet, fScore, boardLength); //on prend le plus petit fscore de l'ensemble ouvert si on trouve pas on prendrra le suivant
-		if (current == -1)
-			break; // Open set empty → pas de chemin
-
-
-		
-		int col = current % self->gridSize;  // extrait j (la colonne)  
-
-		if (player == 0) // test de si on est arrive joueur 0 et 1  
-		{
-			if (col == self->gridSize - 1)
-			{
-				pathRefinder(self, cameFrom, current, path, pathSize); 
-				return;
-			}
-		}
-		else if (player == 1)
-		{
-			if (col == 0)
-			{
-				pathRefinder(self, cameFrom, current, path, pathSize); 
-				return;
-			}
-		}
-		
-		inOpenSet[current] = false; // on marque le noeud comme visité
-
-		ArcList* neighbors = Graph_getArcList(graph, current); //on recupere tt les voisins
-		
-		while (neighbors != NULL) 
-		{
-			int neighbor = neighbors->target; 
-			int tentativeG = gScore[current] + 1; // poids 1 car case adjacente (a check a cause de mouton et cheval)
-
-			if (tentativeG < gScore[neighbor]) //verifie si le chemin pour aller vers le voisin et plus cout en que le chemin deja connu
-			{
-				cameFrom[neighbor] = current; 
-				gScore[neighbor] = tentativeG;
-				fScore[neighbor] = tentativeG + heuristic(self,neighbor, player);   
-
-				if (!inOpenSet[neighbor])  //si le voisin n'est pas dans l'ensemble a visiter on l'ajoute
-				{
-					inOpenSet[neighbor] = true;
-				}
-			}
-
-			neighbors = neighbors->next; //on passe au voisin suivant
-		}
-	}
-
-	*pathSize = -1; // Aucun chemin trouvé
-	free(gScore); 
-	free(fScore);   
-	free(cameFrom); 
-	free(inOpenSet); 
 }
 
 /// @brief Calcule le plus court chemin entre la position du joueur et sa zone d'arrivée. disjktra
@@ -270,7 +100,7 @@ void QuoridorCore_getShortestPath(QuoridorCore* self, int playerID, QuoridorPos*
 /// @param self Instance du jeu Quoridor.
 /// @param playerID Indice du joueur à évaluer (0 ou 1).
 /// @return Une estimation numérique de l'avantage du joueur playerID.
-static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
+static float QuoridorCore_computeScore(QuoridorCore* self, int playerID, void * aiData)
 {
 	int playerA = self->playerID;
 	int playerB = self->playerID ^ 1;
@@ -280,28 +110,57 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
 
 	QuoridorPos playerApath[MAX_GRID_SIZE * MAX_GRID_SIZE];
 	QuoridorPos playerBpath[MAX_GRID_SIZE * MAX_GRID_SIZE];
+	
 	distA = BFS_search2(self, playerA, playerApath);
 	distB = BFS_search2(self, playerB, playerBpath);
 
 	int wallsA = self->wallCounts[playerA];
 	int wallsB = self->wallCounts[playerB];
 	float score = (float)(distB - distA);
-	// Pondérer les murs à petite échelle (ex : 0.5 par mur)
-	if(score > 0)
-		score += 0.5f * (wallsA - wallsB);
-	if(score < 0)
-		score -= 0.1f * (wallsA - wallsB);
+	
 
-	if (distB == 0)
-		score -= 5.f;
-	if (distA == 0)
-	{
-		score += 5.f;
-	}
+
 	// 3. Ajouter un bruit aléatoire pour casser les égalités (pas obligatoire mais pratique)
     score += Float_randAB(-0.1f, +0.1f); 
 	return score;
 }
+
+
+float isTheMoveWorth(int i, int j, void* aiData)
+{
+	ListData* data = (ListData*)aiData;
+	NodeData* current = data->head;
+
+	int count = 0;
+	for (int k = 0; k < MAX_BACK_ANALYS; k++)
+	{
+		if (current->data.action == QUORIDOR_MOVE_TO)
+		{
+			if (current->data.pos.i == i && current->data.pos.j == j)
+			{
+				count++;
+			}
+		}
+	}
+	
+	if (count >= 2)
+	{
+		switch (count)
+		{
+		case 2 : 
+			return -1;
+		case 3 :
+			return -2;
+		case 4 :
+			return -4;
+		default:
+			return -5;
+		}
+	}
+
+	return 0;
+}
+
 
 /// @brief Applique l'algorithme Min-Max (avec élagage alpha-bêta) pour déterminer le coup joué par l'IA.
 /// Cette fonction explore récursivement une partie de l'arbre des coups possibles jusqu'à une profondeur maximale donnée.
@@ -313,13 +172,19 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
 /// @param beta Meilleure valeur actuellement garantie pour le joueur minimisant.
 /// @param turn Pointeur vers une variable où sera enregistré le meilleur coup trouvé (à la racine).
 /// @return L'évaluation numérique de la position courante, selon la fonction heuristique.
-static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth, int maxDepth, float alpha, float beta, QuoridorTurn* turn)
+static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth, int maxDepth, float alpha, float beta, QuoridorTurn* turn, void* aiData)
 {
 
 
     if (currDepth >= maxDepth) //si on atteint le profondzeur max
     {
-        return QuoridorCore_computeScore(self, playerID);
+		int score = QuoridorCore_computeScore(self, playerID,aiData);  
+		
+
+		/*if (turn->action == QUORIDOR_MOVE_TO)
+			score += isTheMoveWorth(turn->i, turn->j, aiData);*/
+		
+		return score;
     }
     int best = 0;
     int IsWall = 0;
@@ -341,8 +206,14 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
         QuoridorCore copy = *self;
         copy.positions[playerID].i = moves[k].i;
         copy.positions[playerID].j = moves[k].j;
+		
+		turn->action = QUORIDOR_MOVE_TO;
+		turn->i = copy.positions[playerID].i;
+		turn->j = copy.positions[playerID].j;
 
-        float tmp = QuoridorCore_minMax(&copy, playerID ^ 1, currDepth + 1, maxDepth, alpha, beta, turn);
+
+
+        float tmp = QuoridorCore_minMax(&copy, playerID ^ 1, currDepth + 1, maxDepth, alpha, beta, turn, aiData);
 
         if (maximizing) //élégage aplha
         {
@@ -378,7 +249,6 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
 
 	getBestWall(self, playerID, 999, walls,&wallCount); //on recupere les meilleurs murs a jouer collectFewWallsInFrontOfPath collectAllWallsNearPath
 
-
 		
     for (int m = 0; m < wallCount; m++) //murs 
     {
@@ -396,7 +266,7 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
             gamecopy.vWalls[walls[m].pos.i+1][walls[m].pos.j] = WALL_STATE_END;
         }
         gamecopy.wallCounts[playerID]--; 
-        float tmp = QuoridorCore_minMax(&gamecopy, playerID ^ 1, currDepth + 1, maxDepth, alpha, beta, turn);
+        float tmp = QuoridorCore_minMax(&gamecopy, playerID ^ 1, currDepth + 1, maxDepth, alpha, beta, turn, aiData);
 
         if (maximizing)//élagage aplha
         {
@@ -430,6 +300,7 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
         turn->action = QUORIDOR_MOVE_TO;
         turn->i = moves[best].i;
         turn->j = moves[best].j;
+
 
 
     }
@@ -467,7 +338,22 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 
   const float alpha = -INFINITY;
   const float beta = INFINITY;
-  float childValue = QuoridorCore_minMax(self, self->playerID, 0, 2, alpha, beta, &childTurn);
+
+  
+
+  ListData* database;
+
+  float childValue = QuoridorCore_minMax(self, self->playerID, 0, 4, alpha, beta, &childTurn,aiData);
+
+  QuoridorData turn;
+  
+  turn.action = childTurn.action;
+  turn.pos.i = childTurn.i;
+  turn.pos.j = childTurn.j;
+  turn.score = 0; //0 pour l'instant 
+  
+  AIData_add((ListData*)aiData, turn);
+	
   return childTurn;
 
 }
@@ -729,7 +615,8 @@ void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize
 
 void collectFewWallsInFrontOfPath(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall* candidat, int* candidatCount) //regarde les murs bien orient au debut du chemin
 {
-	int maxSteps = min(pathSize - 1, 4); // examine les 3 premiere case 
+	short int nbrOfcaseToAnalysis = 4; // nombre de case a analyser
+	int maxSteps = (pathSize - 1) < nbrOfcaseToAnalysis ? (pathSize - 1) : nbrOfcaseToAnalysis; // examine les 4 premiere case 
 	int maxWalls = 32; // nombre max de murs candidats 
 
 	
@@ -845,7 +732,7 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 
 	QuoridorWall attemptingWalls[100]; // ca sera les mur a tester
 
-	collectFewWallsInFrontOfPath(self, enemyPath, actualEnemySize, &attemptingWalls, &attemptingCount); 
+	collectFewWallsInFrontOfPath(self, enemyPath, actualEnemySize, attemptingWalls, &attemptingCount);  
 
 	QuoridorCore copy = *self;
 

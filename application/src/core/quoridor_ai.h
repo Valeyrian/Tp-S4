@@ -13,7 +13,8 @@
 #include "core/shortest_path.h"
 #include "core/listData.h"
 
-#define MAX_BACK_ANALYS 5
+
+#define MAX_BACK_ANALYS 6
 
 
 //// @brief Représente un mur sur le plateau de Quoridor.
@@ -31,17 +32,17 @@ typedef struct QuoridorWall
 /// @brief Crée les données utilisées par l'IA.
 /// @param core Instance du jeu Quoridor.
 /// @return Pointeur vers les données de l'IA créées.
-QuoridorData* AIData_create();
+ListData* AIData_create();
 
 /// @brief Détruit les données de l'IA.
 /// @param self Pointeur vers les données de l'IA à détruire.
-void AIData_destroy(ListData* database); 
+void AIData_destroy(void* database); 
 
 
 /// @brief Réinitialise les données de l'IA.
 /// À appeler au début de chaque nouvelle partie.
 /// @param self Pointeur vers les données de l'IA.
-void AIData_reset(ListData* database);
+void AIData_reset(void* database);
 
 
 
@@ -64,6 +65,12 @@ void collectFewWallsInFrontOfPath(QuoridorCore* self, QuoridorPos* path, int pat
 
 void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* bestWalls,int *wallCount);
 
+
+/// @brief MInMax
+static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth, int maxDepth, float alpha, float beta, QuoridorTurn* turn, void* aiData);
+
+/// computeScore
+static float QuoridorCore_computeScore(QuoridorCore* self, int playerID, void* aiData);
 
 
 /// @brief Calcule le plus court chemin entre la position du joueur et sa zone d'arrivée.
