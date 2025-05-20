@@ -46,7 +46,7 @@ void collectFewWallsInFrontOfPath(QuoridorCore* self, QuoridorPos* path, int pat
 
 /// @brief Calcule les meilleurs mur à jouer.
 
-void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* bestWalls,int *wallCount, void* (wichWall)(QuoridorCore*, QuoridorPos*, int, QuoridorWall*, int*));
+void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* bestWalls,int *wallCount);
 
 
 
