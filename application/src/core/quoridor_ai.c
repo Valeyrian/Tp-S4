@@ -10,7 +10,7 @@
 #include "core/shortest_path.h"
 #include "core/quoridor_ai.h"
 
-#define MAX_BEST_WALLS 1
+#define MAX_BEST_WALLS 5
 
 void* AIData_create(QuoridorCore* core)
 {
@@ -130,7 +130,8 @@ void AStarShortestPath(QuoridorCore *self ,Graph* graph, int player, QuoridorPos
 	int* cameFrom = calloc(boardLength, sizeof(int)); //tableau du chemin parcourue
 	
 	bool* inOpenSet = calloc(boardLength, sizeof(bool));  //tableau de boolen pour savoir si le point est dans l'ensemble ouvert (deja vue)
-
+	if (!inOpenSet)
+		return;
 	for (int i = 0; i < boardLength; i++) 
 	{
 		gScore[i] = INT_MAX;
@@ -271,14 +272,21 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
 
 	int wallsA = self->wallCounts[playerA];
 	int wallsB = self->wallCounts[playerB];
-
+	float score = (float)(distB - distA);
 	// Pondérer les murs à petite échelle (ex : 0.5 par mur)
-	float score = (float)(distB - distA);// +0.3f * (wallsA - wallsB);
+	if(score > 0)
+		score += 0.5f * (wallsA - wallsB);
+	if(score < 0)
+		score -= 0.1f * (wallsA - wallsB);
 
+	if (distB == 0)
+		score -= 5.f;
+	if (distA == 0)
+	{
+		score += 5.f;
+	}
 	// 3. Ajouter un bruit aléatoire pour casser les égalités (pas obligatoire mais pratique)
-
-	//score += Float_randAB(-0.2f, +0.2f); 
-
+    score += Float_randAB(-0.1f, +0.1f); 
 	return score;
 }
 
@@ -295,24 +303,13 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
 static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth, int maxDepth, float alpha, float beta, QuoridorTurn* turn)
 {
 
-    if (self->state != QUORIDOR_STATE_IN_PROGRESS) //si un des joueurs a gagné
-    {
-        if (self->state == QUORIDOR_STATE_P0_WON && playerID == 0)
-            return INFINITY;
-        if (self->state == QUORIDOR_STATE_P1_WON && playerID == 0)
-            return -INFINITY;
-        if (self->state == QUORIDOR_STATE_P0_WON && playerID == 1)
-            return -INFINITY;
-        if (self->state == QUORIDOR_STATE_P1_WON && playerID == 1)
-            return INFINITY;
-    }
-    else if (currDepth >= maxDepth) //si on atteint le profondzeur max
+
+    if (currDepth >= maxDepth) //si on atteint le profondzeur max
     {
         return QuoridorCore_computeScore(self, playerID);
     }
     int best = 0;
     int IsWall = 0;
-
     const int gridSize = self->gridSize;
     const int currI = self->positions[self->playerID].i;
     const int currJ = self->positions[self->playerID].j;
@@ -323,9 +320,9 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
 
 
     int moveCount = 0;
-    QuoridorPos moves[8];
+	QuoridorPos moves[8] = { 0 };
     moveCount = QuoridorCore_getMoves(self, moves, self->positions[playerID], 1); 
-
+	//printf("%d %d\n", playerID, self->playerID);
     for (int k = 0; k < moveCount; k++) //mouvements
     {
         QuoridorCore copy = *self;
@@ -365,7 +362,9 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
 	int wallCount = 0;
     //getBestWall(self, playerID, 999, walls,&wallCount,collectAllWallsNearPath);  
 	 
+
 	getBestWall(self, playerID, 999, walls,&wallCount); //on recupere les meilleurs murs a jouer collectFewWallsInFrontOfPath collectAllWallsNearPath
+
 
 		
     for (int m = 0; m < wallCount; m++) //murs 
@@ -441,7 +440,7 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
     ////// Comme la structure QuoridorCore ne contient aucune allocation interne,
     ////// la copie s'éffectue simplement avec :
     ////// QuoridorCore gameCopy = *self;
-    
+
 
     return value;
 }
@@ -807,7 +806,7 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 	const int otherPlayer = player ^ 1;
 
 
-	int longestEnemyWaySize, longesPlayerWaySize = -1;
+	int longestEnemyWaySize = 0, longesPlayerWaySize = -1;
 	int playerRatio, enemyRatio = 0;
 	int gain = 0;
 	*wallCount = 0;
@@ -921,7 +920,7 @@ int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab)
 	{
 		int moveCount = 0;
 
-		QuoridorPos moves[8];
+		QuoridorPos moves[8] = { 0,0 };
 
 		QuoridorPos position = tab[start++];
 

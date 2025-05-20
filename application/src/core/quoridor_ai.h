@@ -105,5 +105,4 @@ int extractLowestF(bool* inOpenSet, int* fScore, int size);
 /// @param pathSize taille du tableau path
 void AStarShortestPath(QuoridorCore* self, Graph* graph, int player, QuoridorPos* path, int* pathSize);
 
-ListQuor *BFS_search(QuoridorCore* self, int playerID);
 int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab);
