@@ -362,7 +362,9 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
 	int wallCount = 0;
     //getBestWall(self, playerID, 999, walls,&wallCount,collectAllWallsNearPath);  
 	 
-	getBestWall(self, playerID, 999, walls,&wallCount, collectAllWallsNearPath); //on recupere les meilleurs murs a jouer 
+
+	getBestWall(self, playerID, 999, walls,&wallCount); //on recupere les meilleurs murs a jouer collectFewWallsInFrontOfPath collectAllWallsNearPath
+
 
 		
     for (int m = 0; m < wallCount; m++) //murs 
@@ -438,6 +440,7 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
     ////// Comme la structure QuoridorCore ne contient aucune allocation interne,
     ////// la copie s'éffectue simplement avec :
     ////// QuoridorCore gameCopy = *self;
+
 
     return value;
 }
@@ -725,39 +728,73 @@ void collectFewWallsInFrontOfPath(QuoridorCore* self, QuoridorPos* path, int pat
 
 	for (int k = 0; k < maxSteps && *candidatCount < maxWalls; k++) 
 	{
-		 
-		int i = path[k].i; 
-		int j = path[k].j; 
-		int di = path[k + 1].i - i; 
-		int dj = path[k + 1].j - j; 
+		int i = path[k].i;
+		int j = path[k].j;
 
-		// Mouvement vertical doncc candidat mur horizontal
-		if (di != 0 && i > 0 && !seen[i - 1][j][WALL_TYPE_HORIZONTAL]) 
+		if (i > 0 && !seen[i - 1][j][WALL_TYPE_HORIZONTAL]) // mur au dessus
 		{
-			candidat[*candidatCount].type = WALL_TYPE_HORIZONTAL;
 			candidat[*candidatCount].pos.i = i - 1;
 			candidat[*candidatCount].pos.j = j;
+			candidat[*candidatCount].type = WALL_TYPE_HORIZONTAL;
 			(*candidatCount)++;
 			seen[i - 1][j][WALL_TYPE_HORIZONTAL] = true;
 		}
-
-		// Mouvement horizontal donc candidat mur vertical
-		if (dj != 0 && j > 0 && !seen[i][j - 1][WALL_TYPE_VERTICAL]) 
+		if (i < self->gridSize - 1 && !seen[i + 1][j][WALL_TYPE_HORIZONTAL]) // mur en dessous
 		{
-			candidat[*candidatCount].type = WALL_TYPE_VERTICAL;
+			candidat[*candidatCount].pos.i = i;
+			candidat[*candidatCount].pos.j = j;
+			candidat[*candidatCount].type = WALL_TYPE_HORIZONTAL;
+			(*candidatCount)++;
+			seen[i + 1][j][WALL_TYPE_HORIZONTAL] = true;
+		}
+		if (j > 0 && !seen[i][j - 1][WALL_TYPE_VERTICAL]) // mur a gauche
+		{
 			candidat[*candidatCount].pos.i = i;
 			candidat[*candidatCount].pos.j = j - 1;
+			candidat[*candidatCount].type = WALL_TYPE_VERTICAL;
 			(*candidatCount)++;
 			seen[i][j - 1][WALL_TYPE_VERTICAL] = true;
 		}
+		if (j < self->gridSize - 1 && !seen[i][j + 1][WALL_TYPE_VERTICAL]) // mur a droite
+		{
+			candidat[*candidatCount].pos.i = i;
+			candidat[*candidatCount].pos.j = j;
+			candidat[*candidatCount].type = WALL_TYPE_VERTICAL;
+			(*candidatCount)++;
+			seen[i][j + 1][WALL_TYPE_VERTICAL] = true;
+		} 
+
+		 
+		//int i = path[k].i; 
+		//int j = path[k].j; 
+		//int di = path[k + 1].i - i; 
+		//int dj = path[k + 1].j - j; 
+
+		//// Mouvement vertical doncc candidat mur horizontal
+		//if (di != 0 && i > 0 && !seen[i - 1][j][WALL_TYPE_HORIZONTAL]) 
+		//{
+		//	candidat[*candidatCount].type = WALL_TYPE_HORIZONTAL;
+		//	candidat[*candidatCount].pos.i = i - 1;
+		//	candidat[*candidatCount].pos.j = j;
+		//	(*candidatCount)++;
+		//	seen[i - 1][j][WALL_TYPE_HORIZONTAL] = true;
+		//}
+
+		//// Mouvement horizontal donc candidat mur vertical
+		//if (dj != 0 && j > 0 && !seen[i][j - 1][WALL_TYPE_VERTICAL]) 
+		//{
+		//	candidat[*candidatCount].type = WALL_TYPE_VERTICAL;
+		//	candidat[*candidatCount].pos.i = i;
+		//	candidat[*candidatCount].pos.j = j - 1;
+		//	(*candidatCount)++;
+		//	seen[i][j - 1][WALL_TYPE_VERTICAL] = true;
+		//}
 	}
 
 	return;
 }
 
-
-
-void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* bestWalls,int *wallCount,void *(wichWall)(QuoridorCore*,QuoridorPos*,int,QuoridorWall*,int*))
+void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* bestWalls,int *wallCount)
 {
 
 	if(self->wallCounts[player] == 0) // si le joueur n'a plus de mur
@@ -795,7 +832,7 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 
 	QuoridorWall attemptingWalls[100]; // ca sera les mur a tester
 
-	wichWall(self, enemyPath, actualEnemySize, &attemptingWalls, &attemptingCount);   
+	collectFewWallsInFrontOfPath(self, enemyPath, actualEnemySize, &attemptingWalls, &attemptingCount); 
 
 	QuoridorCore copy = *self;
 
