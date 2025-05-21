@@ -117,7 +117,7 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
     //int playerA = self->playerID;
     //int playerB = self->playerID ^ 1;
 
-/*   int distA = 0;
+   int distA = 0;
    int distB = 0;
 
     QuoridorPos playerApath[MAX_GRID_SIZE * MAX_GRID_SIZE];
@@ -129,15 +129,9 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
     int wallsA = self->wallCounts[playerA];
     int wallsB = self->wallCounts[playerB];
     float score = (float)(distB - distA);
-*/
 
 
 
-
-
-	int wallsA = self->wallCounts[playerA];
-	int wallsB = self->wallCounts[playerB];
-	float score = (float)(distB - distA);
 
     //printf("pos = %d,%d   %.2f\n", self->positions[playerA].i, self->positions[playerA].j,score);
 
@@ -403,14 +397,11 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 	QuoridorData turn;
 
 
-    ListData* database;
 
 
  
 
 //	AIData_add((ListData*)aiData, turn);
-
-    QuoridorData turn;
 
     turn.action = childTurn.action;
     turn.pos.i = childTurn.i;
@@ -717,10 +708,11 @@ void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize
             seen[i - 1][j][WALL_TYPE_VERTICAL] = true;
         }
 	}
-    }
-
     return;
 }
+
+ 
+
 
 void collectFewWallsInFrontOfPath(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall* candidat, int* candidatCount) //regarde les murs bien orient au debut du chemin
 {
@@ -841,10 +833,10 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 	QuoridorWall attemptingWalls[100]; // ca sera les mur a tester
 
 #ifdef ALL_WALLS
-	    collectAllWallsNearPath(self, enemyPath, actualEnemySize, attemptingWalls, &attemptingCount);
+	    collectAllWallsNearPath(self, enemyPath, actualEnemySize, attemptingWalls, attemptingCount);
 #endif
 #ifndef ALL_WALLS
-        collectFewWallsInFrontOfPath(self, enemyPath, actualEnemySize, attemptingWalls, &attemptingCount);
+        collectFewWallsInFrontOfPath(self, enemyPath, actualEnemySize, attemptingWalls, attemptingCount);
 #endif 
         
 
@@ -918,10 +910,10 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 	return;
 }
 
-int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab)
+int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab) 
 {
     int gridSize = self->gridSize;
-    int front = 0, back = 1;
+    int front = 0, back = 1; 
     int visited[MAX_GRID_SIZE][MAX_GRID_SIZE] = { 0 };
     int distance = 0;
 
@@ -987,7 +979,7 @@ int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab)
 		   return distance;
        }
    }
-   printf("bruhh %d %d\n", self->positions[playerID].i, self->positions[playerID].j);
+    printf("bruhh %d %d\n", self->positions[playerID].i, self->positions[playerID].j);
    return -1; // Retourne -1 si aucun chemin n'est trouvé
 
 }
