@@ -9,14 +9,17 @@
 #include "settings.h"
 #include "core/quoridor_core.h"
 #include "core/utils.h"
-
+#include "core/graph.h"
+#include "core/shortest_path.h"
 #include "core/listData.h"
 
 
 #define MAX_BACK_ANALYS 6
-#define MAX_BEST_WALLS 5
-#define RAND_VALUE 0.2
-#define ALL_WALLS 5
+#define MAX_BEST_WALLS 3
+#define RAND_VALUE 0.25
+#define ALL_WALLS 
+#define DEPTH_MAX 5
+
 
 //// @brief Représente un mur sur le plateau de Quoridor.
 typedef struct QuoridorWall
@@ -70,7 +73,7 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth, int maxDepth, float alpha, float beta, QuoridorTurn* turn, void* aiData);
 
 /// computeScore
-static float QuoridorCore_computeScore(QuoridorCore* self, int playerID);
+static float QuoridorCore_computeScore(QuoridorCore* self, int playerID, void* aiData);
 
 
 /// @brief Calcule le plus court chemin entre la position du joueur et sa zone d'arrivée.
@@ -81,10 +84,7 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID);
 ///     et la position actuelle du joueur à l'indice (size - 1).
 /// @param size Adresse d'un entier dans lequel sera écrite la taille du chemin.
 ///     La distance est alors égale à (size - 1).
-
-void QuoridorCore_getShortestPath(QuoridorCore *self, int playerID, QuoridorPos *path, int *size);
-int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves, QuoridorPos pos, int player);
-
+void QuoridorCore_getShortestPath(QuoridorCore *self, int playerID, QuoridorPos *path, int *size,Graph* graph);
 
 /// @brief Fonction spécifique à l'évaluation sur Moodle.
 /// Calcule le coup joué par l'IA avec une profondeur de 2.
@@ -101,6 +101,8 @@ INLINE QuoridorTurn QuoridorCore_computeMoodleTurn(QuoridorCore* self, void* aiD
 
 int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab);
 
-int QuoridorCore_getMoves(QuoridorCore* self, QuoridorPos* moves, QuoridorPos pos, int player);
 
-void AIData_add(ListData* database, QuoridorData data);
+INLINE void* AIData_add(ListData* database, QuoridorData data)
+{
+    ListData_insertFirstPopLast(database, data);
+}
