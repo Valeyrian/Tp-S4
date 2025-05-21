@@ -14,7 +14,9 @@
 
 
 #define MAX_BACK_ANALYS 6
-
+#define MAX_BEST_WALLS 5
+#define RAND_VALUE 0.2
+#define ALL_WALLS 5
 
 //// @brief Représente un mur sur le plateau de Quoridor.
 typedef struct QuoridorWall
