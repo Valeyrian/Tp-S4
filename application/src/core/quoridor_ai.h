@@ -15,6 +15,10 @@
 
 
 #define MAX_BACK_ANALYS 6
+#define MAX_BEST_WALLS 3
+#define RAND_VALUE 0.25
+#define ALL_WALLS 
+#define DEPTH_MAX 5
 
 
 //// @brief Représente un mur sur le plateau de Quoridor.
