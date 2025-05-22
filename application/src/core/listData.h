@@ -2,7 +2,6 @@
 #pragma once 
 
 #include "core/quoridor_ai.h" // pour QuoridorPos
-
 typedef struct QuoridorData
 {
     /// @brief Type de mur (horizontal ou vertical).
@@ -11,7 +10,7 @@ typedef struct QuoridorData
     int score;
 } QuoridorData;
 
-typedef struct NodeData 
+typedef struct NodeData
 {
     QuoridorData data;
     struct NodeData* next;

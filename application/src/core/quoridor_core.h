@@ -48,6 +48,10 @@ typedef enum QuoridorState
 
     /// @brief Partie remportée par le joueur d'indice 1.
     QUORIDOR_STATE_P1_WON,
+    QUORIDOR_STATE_P2_WON,
+
+    QUORIDOR_STATE_P3_WON,
+
 } QuoridorState;
 
 /// @brief Représente la position d'un pion sur le plateau de Quoridor.
@@ -88,10 +92,10 @@ typedef struct QuoridorCore
     int playerID;
 
     /// @brief Position actuelle du pion de chaque joueur.
-    QuoridorPos positions[2];
+    QuoridorPos positions[4];
 
     /// @brief Nombre de murs restants pour chaque joueur.
-    int wallCounts[2];
+    int wallCounts[4];
 
 
 

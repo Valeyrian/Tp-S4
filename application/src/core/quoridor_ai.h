@@ -14,14 +14,24 @@
 
 
 #define MAX_BACK_ANALYS 6
-#define MAX_BEST_WALLS 2
+#define MAX_BEST_WALLS 500
 #define RAND_VALUE 0.25
 #define ALL_WALLS 
-#define DEPTH_MAX 8
-#define MAX_CANDIDATES 200
+#define MAX_CANDIDATES 500
+#define A_STAR
 
-//#define A_STAR
+#define FOURPLAYERS
 
+
+
+#ifdef FOURPLAYERS // 4 joueurs
+    #define DEPTH_MAX 2
+#endif 
+#ifndef FOURPLAYERS // 2 joueurs
+    #define DEPTH_MAX 4
+#endif 
+  
+  
 
 
 

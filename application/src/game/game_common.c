@@ -24,8 +24,13 @@ GameColors g_colors = {
     .selected = { 54, 79, 89, 255 },
     .player0 = { 63, 136, 197, 255},
     .player1 = { 231, 206, 116, 255},
+    .player2 = { 146, 215, 104, 255},
+    .player3 = { 234, 45, 71, 255},
+
     .move0 = { 129, 178, 217, 255},
     .move1 = { 240, 231, 168, 255},
+    .move2 = { 0, 0, 128, 255},
+    .move3 = { 128, 0, 0, 255},
 };
 
 void Game_addAssets(AssetManager *assets)
