@@ -9,9 +9,8 @@
 #include "settings.h"
 #include "core/quoridor_core.h"
 #include "core/utils.h"
-#include "core/graph.h"
-#include "core/shortest_path.h"
 #include "core/listData.h"
+
 
 
 #define MAX_BACK_ANALYS 6
@@ -19,7 +18,7 @@
 #define RAND_VALUE 0.25
 #define ALL_WALLS 
 #define MAX_CANDIDATES 500
-
+#define A_STAR
 
 #define FOURPLAYERS
 
@@ -31,6 +30,9 @@
 #ifndef FOURPLAYERS // 2 joueurs
     #define DEPTH_MAX 4
 #endif 
+  
+  
+
 
 
 //// @brief Représente un mur sur le plateau de Quoridor.
@@ -42,7 +44,19 @@ typedef struct QuoridorWall
     int score;
 } QuoridorWall;
 
+typedef struct Node
+{
+	int hscore;
+	int gscore;
+	int fscore;
+   
+    bool inOpenList;
+	bool inCloseList;
 
+	QuoridorPos pos;
+	QuoridorPos parent;
+
+} node ;
 
 
 /// @brief Crée les données utilisées par l'IA.
@@ -73,7 +87,7 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore *self, int depth, void *aiDat
 void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall* candidat, int* candidatCount);
 
 // @brief prend au + 8 mur sur les 3 premiers cases du chemin et dans la direction du joueur
-void collectFewWallsInFrontOfPath(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall* candidat, int* candidatCount);
+//void collectFewWallsInFrontOfPath(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall* candidat, int* candidatCount);
 
 
 /// @brief Calcule les meilleurs mur à jouer.
@@ -85,7 +99,7 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
 static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth, int maxDepth, float alpha, float beta, QuoridorTurn* turn, void* aiData);
 
 /// computeScore
-static float QuoridorCore_computeScore(QuoridorCore* self, int playerID, void* aiData);
+static float QuoridorCore_computeScore(QuoridorCore* self, int playerID);
 
 
 /// @brief Calcule le plus court chemin entre la position du joueur et sa zone d'arrivée.
@@ -96,7 +110,7 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID, void* a
 ///     et la position actuelle du joueur à l'indice (size - 1).
 /// @param size Adresse d'un entier dans lequel sera écrite la taille du chemin.
 ///     La distance est alors égale à (size - 1).
-void QuoridorCore_getShortestPath(QuoridorCore *self, int playerID, QuoridorPos *path, int *size,Graph* graph);
+//void QuoridorCore_getShortestPath(QuoridorCore *self, int playerID, QuoridorPos *path, int *size,Graph* graph);
 
 /// @brief Fonction spécifique à l'évaluation sur Moodle.
 /// Calcule le coup joué par l'IA avec une profondeur de 2.
@@ -118,3 +132,16 @@ INLINE void* AIData_add(ListData* database, QuoridorData data)
 {
     ListData_insertFirstPopLast(database, data);
 }
+
+void collectAllWall(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall* candidat, int* candidatCount);
+
+int AStar_search(QuoridorCore* self, int playerID, QuoridorPos* outPath);
+
+bool isWallBetween(QuoridorCore* self, QuoridorPos depart, QuoridorPos arrive);
+int StarHeuristique(QuoridorCore* self, node* node, int playerId);
+
+
+
+
+
+

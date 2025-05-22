@@ -76,28 +76,41 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
     int distC = 0;
     int distD = 0;
 
+
     QuoridorPos playerApath[MAX_GRID_SIZE * MAX_GRID_SIZE];
     QuoridorPos playerBpath[MAX_GRID_SIZE * MAX_GRID_SIZE];
 
-    distA = BFS_search2(self, playerA, playerApath);
-    distB = BFS_search2(self, playerB, playerBpath);
 
-    float score = (float)(distB - distA);
-
+#ifndef A_STAR 
+  distA = BFS_search2(self, playerA, playerApath);
+  distB = BFS_search2(self, playerB, playerBpath);
+#else
+	distA =  AStar_search(self, playerA, playerApath); 
+	distB =  AStar_search(self, playerB, playerBpath);
+#endif
+   float score = (float)(distB - distA); 
 
 #ifdef FOURPLAYERS
-    distC = BFS_search2(self, playerC, playerBpath);
-    distD = BFS_search2(self, playerD, playerBpath);
-
-
-    score = (float)(distB + distC + distD - distA);
+#ifndef A_STAR 
+  distC = BFS_search2(self, playerC, playerCpath);
+  distD = BFS_search2(self, playerD, playerDpath);
+#else
+	distC =  AStar_search(self, playerC, playerCpath); 
+	distD =  AStar_search(self, playerD, playerDpath);
+#endif
+  score = (float)(distB + distC + distD - distA);
 #endif // FOURPLAYERS
 
 
 
 
 
+    //printf("pos = %d,%d   %.2f\n", self->positions[playerA].i, self->positions[playerA].j,score);
+
+
+
     score += Float_randAB(-RAND_VALUE, +RAND_VALUE);
+
 
     return score;
 }
@@ -152,6 +165,7 @@ float isTheMoveWorth(int i, int j, void* aiData)
 /// @return L'évaluation numérique de la position courante, selon la fonction heuristique.
 static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth, int maxDepth, float alpha, float beta, QuoridorTurn* turn, void* aiData, int isAMoveTo)
 {
+
 #ifndef FOURPLAYERS
     if (self->state != QUORIDOR_STATE_IN_PROGRESS) //si un des joueurs a gagné
     {
@@ -169,6 +183,7 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
 
     if (currDepth >= maxDepth) //si on atteint la profondeur max
     {
+
         float score = QuoridorCore_computeScore(self, playerID);
         //if (isAMoveTo)
         //    score += isTheMoveWorth(self->positions[playerID].i, self->positions[playerID].j, aiData);
@@ -217,13 +232,13 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
                         turn->j = j;
                     }
 
-                    // Alpha-beta pruning
                     if (value >= beta)
-                        return value; // Prune - opponent won't allow this branch
+                        return value; 
                     alpha = fmaxf(alpha, value);
                 }
                 else
                 {
+
                     if (tmp < value)
                     {
                         value = tmp;
@@ -306,24 +321,30 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
 
 QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiData)
 {
-    QuoridorTurn childTurn = { 0 };
+
 
     const float alpha = -INFINITY;
     const float beta = INFINITY;
 #ifdef FOURPLAYERS
 
 
-        if (self->wallCounts[self->playerID] == 0) {
-            QuoridorPos path[MAX_PATH_LEN];
-            BFS_search2(self, self->playerID, path);
-            if (self->isValid[path[1].i][path[1].j]) {
-                childTurn.i = path[1].i;
-                childTurn.j = path[1].j;
-                childTurn.action = QUORIDOR_MOVE_TO;
-                return childTurn;
-            }
-        }
-        
+
+if (self->wallCounts[self->playerID] == 0) {
+    QuoridorPos path[MAX_PATH_LEN];
+
+
+#ifndef A_STAR 
+      BFS_search2(self, self->playerID, path);
+#else 
+      AStar_search(self, self->playerID, path);
+#endif
+    if (self->isValid[path[1].i][path[1].j]) 
+    {
+        childTurn.i = path[1].i;
+        childTurn.j = path[1].j;
+        childTurn.action = QUORIDOR_MOVE_TO;
+        return childTurn;
+    }       
 #endif // FOURPLAYERS
 
     ListData* database;
@@ -336,6 +357,7 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
     turn.pos.i = childTurn.i;
     turn.pos.j = childTurn.j;
     turn.score = 0; //0 pour l'instant 
+
 
     //	AIData_add((ListData*)aiData, turn);
 
@@ -547,6 +569,57 @@ int compareWalls(const void* a, const void* b)
 
 
 
+
+void collectAllWall(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall* candidat, int* candidatCount)
+{
+	// Vérifications des paramètres d'entrée
+	assert(self != NULL && "self ne doit pas être NULL");
+	assert(path != NULL && "path ne doit pas être NULL");
+	assert(candidat != NULL && "candidat ne doit pas être NULL");
+	assert(candidatCount != NULL && "candidatCount ne doit pas être NULL");
+	assert(pathSize >= 0 && pathSize <= MAX_GRID_SIZE * MAX_GRID_SIZE && "pathSize doit être dans une plage valide");
+
+	// Tableau pour suivre les murs déjà vus
+	bool seen[MAX_GRID_SIZE][MAX_GRID_SIZE][2];
+	memset(seen, 0, sizeof(seen)); // Initialiser le tableau à false
+
+	*candidatCount = 0;
+
+	// Stocker la taille de la grille localement
+	int gridSize = self->gridSize;
+	assert(gridSize > 0 && gridSize <= MAX_GRID_SIZE && "gridSize doit être valide");
+
+    int caseCount = gridSize * gridSize;
+
+    for (int i = 0; i < gridSize - 1; i++)
+    {
+        for (int j = 0; j < gridSize - 1; j++)
+        {
+			for (int k = 0; k < 2; k++)
+			{
+				if (k == WALL_TYPE_HORIZONTAL)
+				{
+					assert(*candidatCount < MAX_CANDIDATES && "Dépassement du nombre maximal de candidats"); 
+					QuoridorWall* currentCandidat = &candidat[*candidatCount]; 
+					currentCandidat->pos.i = i; 
+					currentCandidat->pos.j = j; 
+					currentCandidat->type = WALL_TYPE_HORIZONTAL; 
+					(*candidatCount)++; 
+				}
+                else
+                {
+					assert(*candidatCount < MAX_CANDIDATES && "Dépassement du nombre maximal de candidats"); 
+					QuoridorWall* currentCandidat = &candidat[*candidatCount]; 
+					currentCandidat->pos.i = i; 
+					currentCandidat->pos.j = j; 
+					currentCandidat->type = WALL_TYPE_VERTICAL; 
+                    (*candidatCount)++;
+                }
+			}
+        }
+    }
+}
+
 void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall* candidat, int* candidatCount)
 {
     // Vérifications des paramètres d'entrée
@@ -567,9 +640,10 @@ void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize
     assert(gridSize > 0 && gridSize <= MAX_GRID_SIZE && "gridSize doit être valide");
 
 
+ 
+
     for (int k = 0; k < pathSize && *candidatCount < MAX_CANDIDATES; k++)
     {
-        if (*candidatCount == MAX_CANDIDATES) break;
         // Vérifier que les coordonnées sont valides
         int i = path[k].i;
         int j = path[k].j;
@@ -579,7 +653,7 @@ void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize
         // Vérifier les murs horizontaux avec toutes les vérifications nécessaires
         if (i > 0 && j < gridSize && !seen[i - 1][j][WALL_TYPE_HORIZONTAL]) // mur au-dessus
         {
-            if (*candidatCount == MAX_CANDIDATES) break;
+
 
             assert(*candidatCount < MAX_CANDIDATES && "Dépassement du nombre maximal de candidats");
             QuoridorWall* currentCandidat = &candidat[*candidatCount];
@@ -592,7 +666,6 @@ void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize
 
         if (i > 0 && j > 0 && j - 1 < gridSize && !seen[i - 1][j - 1][WALL_TYPE_HORIZONTAL]) // mur au-dessus (gauche)
         {
-            if (*candidatCount == MAX_CANDIDATES) break;
 
             assert(*candidatCount < MAX_CANDIDATES && "Dépassement du nombre maximal de candidats");
             QuoridorWall* currentCandidat = &candidat[*candidatCount];
@@ -605,7 +678,6 @@ void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize
 
         if (i < gridSize - 1 && j < gridSize && !seen[i][j][WALL_TYPE_HORIZONTAL]) // mur en dessous
         {
-            if (*candidatCount == MAX_CANDIDATES) break;
 
             assert(*candidatCount < MAX_CANDIDATES && "Dépassement du nombre maximal de candidats");
             QuoridorWall* currentCandidat = &candidat[*candidatCount];
@@ -618,7 +690,6 @@ void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize
 
         if (i < gridSize - 1 && j > 0 && j - 1 < gridSize && !seen[i][j - 1][WALL_TYPE_HORIZONTAL]) // mur en dessous (gauche)
         {
-            if (*candidatCount == MAX_CANDIDATES) break;
 
             assert(*candidatCount < MAX_CANDIDATES && "Dépassement du nombre maximal de candidats");
             QuoridorWall* currentCandidat = &candidat[*candidatCount];
@@ -632,7 +703,6 @@ void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize
         // Vérifier les murs verticaux
         if (j > 0 && i < gridSize && !seen[i][j - 1][WALL_TYPE_VERTICAL]) // mur à gauche
         {
-            if (*candidatCount == MAX_CANDIDATES) break;
 
             assert(*candidatCount < MAX_CANDIDATES && "Dépassement du nombre maximal de candidats");
             QuoridorWall* currentCandidat = &candidat[*candidatCount];
@@ -645,7 +715,6 @@ void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize
 
         if (j > 0 && i > 0 && i - 1 < gridSize && !seen[i - 1][j - 1][WALL_TYPE_VERTICAL]) // mur à gauche (haut)
         {
-            if (*candidatCount == MAX_CANDIDATES) break;
 
             assert(*candidatCount < MAX_CANDIDATES && "Dépassement du nombre maximal de candidats");
             QuoridorWall* currentCandidat = &candidat[*candidatCount];
@@ -658,7 +727,6 @@ void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize
 
         if (j < gridSize - 1 && i < gridSize && !seen[i][j][WALL_TYPE_VERTICAL]) // mur à droite
         {
-            if (*candidatCount == MAX_CANDIDATES) break;
 
             assert(*candidatCount < MAX_CANDIDATES && "Dépassement du nombre maximal de candidats");
             QuoridorWall* currentCandidat = &candidat[*candidatCount];
@@ -671,7 +739,6 @@ void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize
 
         if (j < gridSize - 1 && i > 0 && i - 1 < gridSize && !seen[i - 1][j][WALL_TYPE_VERTICAL]) // mur à droite (haut)
         {
-            if (*candidatCount == MAX_CANDIDATES) break;
 
             assert(*candidatCount < MAX_CANDIDATES && "Dépassement du nombre maximal de candidats");
             QuoridorWall* currentCandidat = &candidat[*candidatCount];
@@ -898,17 +965,25 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
     QuoridorPos enemyPath[MAX_GRID_SIZE * MAX_GRID_SIZE];
 
 
-    actualPlayerSize = BFS_search2(self, player, playerPath);
-    actualEnemySize = BFS_search2(self, otherPlayer, enemyPath);
 
+
+#ifndef A_STAR
+    actualPlayerSize = BFS_search2(self, player, playerPath); 
+    actualEnemySize = BFS_search2(self, otherPlayer, enemyPath); 
+#else // !A_STAR
+	actualPlayerSize = AStar_search(self, player, playerPath);
+	actualEnemySize = AStar_search(self, otherPlayer, enemyPath);
+#endif
+    
     // ==> reupere les murs autour du chemin ennemi
 
     QuoridorWall attemptingWalls[MAX_CANDIDATES]; // ca sera les mur a tester
 
 #ifdef ALL_WALLS
-    collectAllWallsNearPath(self, enemyPath, actualEnemySize, attemptingWalls, &attemptingCount);
-#endif
-#ifndef ALL_WALLS
+
+    //collectAllWallsNearPath(self, enemyPath, actualEnemySize, attemptingWalls, &attemptingCount);
+    collectAllWallsNearPath(self, enemyPath, actualEnemySize, attemptingWalls, &attemptingCount); 
+#else
     collectFewWallsInFrontOfPath(self, enemyPath, actualEnemySize, attemptingWalls, &attemptingCount);
 #endif 
 
@@ -936,8 +1011,18 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
             copy.vWalls[i][j] = WALL_STATE_START;
             copy.vWalls[i + 1][j] = WALL_STATE_END;
         }
+
+
+
+#ifndef A_STAR
         playerSize = BFS_search2(&copy, player, playerPath);
         enemySize = BFS_search2(&copy, otherPlayer, enemyPath);
+#else
+		playerSize = AStar_search(&copy, player, playerPath);
+		enemySize = AStar_search(&copy, otherPlayer, enemyPath);
+#endif
+
+       
 
         playerRatio = playerSize - actualPlayerSize; //le nombre de case en + pour le joeur
         enemyRatio = enemySize - actualEnemySize;    // le nombre de cases en + pour l enemy
@@ -1039,7 +1124,9 @@ int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab)
             back++;
         }
 
+
         if ((current.j == 0 && playerID == 1) || (playerID == 0 && current.j == gridSize - 1) || (playerID == 2 && current.i == gridSize - 1) || (playerID == 3 && current.i == 0)) {
+
             QuoridorPos temp = current;
             for (int i = 0; i < MAX_PATH_LEN; i++) {
 
@@ -1060,4 +1147,191 @@ int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab)
     }
     printf("bruhh %d %d\n", self->positions[playerID].i, self->positions[playerID].j);
     return -1; // Retourne -1 si aucun chemin n'est trouvé
+
 }
+
+
+int StarHeuristique(QuoridorCore *self,node *node,int playerId)
+{
+	    int gridsize = self->gridSize;
+        // Distance brute jusqu'à la ligne d’arrivée
+        int distance;  
+		if (playerId == 0) 
+        {
+			distance = gridsize - 1 - node->pos.j;  
+		}
+        else 
+        {
+			distance = node->pos.j;  
+		}
+
+
+		
+        int centerPenalty = abs(node->pos.i - gridsize / 2); // idee malus si on est loin du centre
+
+        distance = distance * 2 + centerPenalty; // ponderation 
+        return  distance; 
+}
+
+
+
+bool isWallBetween(QuoridorCore *self,QuoridorPos depart, QuoridorPos arrive)
+{
+    if (depart.i == arrive.i && depart.j == arrive.j)
+        return false; // même case
+
+  
+    if (depart.i > arrive.i) {
+        
+        return QuoridorCore_hasWallAbove(self, depart.i, depart.j);
+    }
+    else if (depart.i < arrive.i) {
+        
+        return QuoridorCore_hasWallBelow(self, depart.i, depart.j);
+    }
+
+   
+    if (depart.j > arrive.j) {
+       
+        return QuoridorCore_hasWallLeft(self, depart.i, depart.j);
+    }
+    else if (depart.j < arrive.j) {
+       
+        return QuoridorCore_hasWallRight(self, depart.i, depart.j);
+    }
+
+    return false;
+} 
+
+int AStar_search(QuoridorCore* self, int playerID, QuoridorPos* outPath)
+{
+    QuoridorPos start = self->positions[playerID];
+    int gridSize = self->gridSize;
+
+    // Objectif : atteindre n'importe quelle ligne (haut ou bas selon le joueur)
+    int goalCol = (playerID == 0) ? gridSize - 1 : 0;
+
+    node nodes[MAX_GRID_SIZE][MAX_GRID_SIZE]; 
+    memset(nodes, 0, sizeof(nodes));
+
+  
+    for (int i = 0; i < gridSize; i++)
+        for (int j = 0; j < gridSize; j++) 
+        {
+            nodes[i][j].pos.i = i; 
+            nodes[i][j].pos.j = j; 
+            nodes[i][j].gscore = 99999; 
+            nodes[i][j].hscore = 99999;
+            nodes[i][j].fscore = 99999;
+            nodes[i][j].inOpenList = false; 
+            nodes[i][j].inCloseList = false; 
+        }
+
+    nodes[start.i][start.j].gscore = 0;
+    nodes[start.i][start.j].hscore = 0; 
+    nodes[start.i][start.j].fscore = nodes[start.i][start.j].hscore;  //fscore h + g mais ici g = 0
+    
+    nodes[start.i][start.j].parent = start; 
+    nodes[start.i][start.j].inOpenList = true;  
+	nodes[start.i][start.j].inCloseList = false;
+
+    while (true) 
+    {
+     
+        node* current = NULL;    // Trouver le noeud avec le plus petit fCost dans la open list
+        for (int i = 0; i < gridSize; i++) 
+        {
+            for (int j = 0; j < gridSize; j++) 
+            {
+                if (nodes[i][j].inOpenList && !nodes[i][j].inCloseList) 
+                {
+                    if (current == NULL || nodes[i][j].fscore < current->fscore)
+                        current = &nodes[i][j]; 
+                }
+            }
+        }
+
+        if (!current) break; // aucun chemin trouvé
+
+        current->inCloseList = true;
+        current->inOpenList = false;
+
+        // CORRECTION : Vérifier la vraie condition de victoire
+        bool hasWon = false;
+        if (playerID == 0) {
+            // Joueur 0 : atteindre j = gridSize-1 (côté droit)
+            hasWon = (current->pos.j == gridSize - 1);
+        }
+        else {
+            // Joueur 1 : atteindre j = 0 (côté gauche)
+            hasWon = (current->pos.j == 0);
+        }
+
+        if (hasWon) {
+            // Reconstruire le chemin
+            QuoridorPos tempPath[MAX_GRID_SIZE * MAX_GRID_SIZE];
+            int pathLen = 0;
+
+            QuoridorPos p = current->pos;
+
+            while (!(p.i == start.i && p.j == start.j)) {
+                assert(pathLen < MAX_GRID_SIZE * MAX_GRID_SIZE && "Chemin du A* trop grand");
+                tempPath[pathLen++] = p;
+                p = nodes[p.i][p.j].parent;
+            }
+
+            // Ajouter la position de départ
+            if (pathLen < MAX_GRID_SIZE * MAX_GRID_SIZE) {
+                tempPath[pathLen++] = start;
+            }
+
+            // Remettre dans l'ordre : start → goal
+            for (int i = 0; i < pathLen; i++) {
+                outPath[i] = tempPath[pathLen - 1 - i];
+            }
+
+            return pathLen; // Retourner la taille du chemin trouvé
+        }
+
+        // Explorer voisins (haut/bas/gauche/droite)
+        int dI[] = { -1, +1, 0, 0 };
+        int dJ[] = { 0, 0, -1, +1 };
+
+        for (int d = 0; d < 4; d++) 
+        {
+            int ni = current->pos.i + dI[d];
+            int nj = current->pos.j + dJ[d];
+
+            if (ni < 0 || ni >= gridSize || nj < 0 || nj >= gridSize)
+                continue;
+
+
+			QuoridorPos neighborPos = { ni, nj };
+
+            if (isWallBetween(self, current->pos,neighborPos )) 
+                continue;
+
+            node* neighbor = &nodes[ni][nj]; 
+            if (neighbor->inCloseList) 
+                continue;
+
+            int tentativeG = current->gscore + 1;
+           
+            if (!neighbor->inOpenList || tentativeG < neighbor->gscore) 
+            {
+                neighbor->gscore = tentativeG;
+                neighbor->hscore = StarHeuristique(self,neighbor,playerID);
+                neighbor->fscore = neighbor->gscore + neighbor->hscore;
+                
+                neighbor->parent = current->pos;
+                neighbor->inOpenList = true;
+				neighbor->inCloseList = false;
+            }
+        }
+    }
+
+    return 0; // pas de chemin trouvé
+}
+
+
+
