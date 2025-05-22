@@ -52,6 +52,10 @@ typedef struct UIQuoridor
     void *m_aiData[2];
 
     Uint64 m_aiAccu;
+
+	
+
+
 } UIQuoridor;
 
 UIQuoridor *UIQuoridor_create(Scene *scene);

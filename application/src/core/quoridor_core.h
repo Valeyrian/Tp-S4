@@ -97,6 +97,7 @@ typedef struct QuoridorCore
     /// @brief Nombre de murs restants pour chaque joueur.
     int wallCounts[4];
 
+    long double timeElapsed[4];
 
 
 } QuoridorCore;
