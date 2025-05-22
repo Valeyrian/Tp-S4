@@ -345,7 +345,13 @@ void UIQuoridor_updatePageMain(UIQuoridor *self)
 
         QuoridorPos path[MAX_GRID_SIZE * MAX_GRID_SIZE];
         int size = 0;
-        size = BFS_search2(core, i,path);
+#ifndef A_STAR
+        size = BFS_search2(core, i, path);
+#else
+		size = AStar_search(core, i, path);
+#endif
+
+     
 
         sprintf(buffer, "%d", size - 1);
         Text_setString(self->m_textDistances[i], buffer);

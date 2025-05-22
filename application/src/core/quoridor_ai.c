@@ -64,13 +64,20 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
     int playerB = playerID ^ 1;
 
     int distA = 0;
-    int distB = 0;
+    int distB = 0; 
 
     QuoridorPos playerApath[MAX_GRID_SIZE * MAX_GRID_SIZE];
     QuoridorPos playerBpath[MAX_GRID_SIZE * MAX_GRID_SIZE];
 
+
+
+#ifndef A_STAR 
     distA = BFS_search2(self, playerA, playerApath);
     distB = BFS_search2(self, playerB, playerBpath);
+#else
+	distA =  AStar_search(self, playerA, playerApath); 
+	distB =  AStar_search(self, playerB, playerBpath);
+#endif
 
     int wallsA = self->wallCounts[playerA];
     int wallsB = self->wallCounts[playerB];
@@ -290,7 +297,17 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 
     if (self->wallCounts[self->playerID] == 0) {
         QuoridorPos path[MAX_PATH_LEN];
+
+
+
+#ifndef A_STAR 
         BFS_search2(self, self->playerID, path);
+#else 
+		AStar_search(self, self->playerID, path);
+#endif
+
+        
+        
         if (self->isValid[path[1].i][path[1].j]) {
             childTurn.i = path[1].i;
             childTurn.j = path[1].j;
@@ -301,7 +318,7 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 
     ListData* database;
 
-    float childValue = QuoridorCore_minMax(self, self->playerID, 0, 2, alpha, beta, &childTurn, aiData, 0);
+    float childValue = QuoridorCore_minMax(self, self->playerID, 0, DEPTH_MAX, alpha, beta, &childTurn, aiData, 0);
 
     QuoridorData turn;
 
@@ -518,184 +535,362 @@ int compareWalls(const void* a, const void* b)
     return wb->score - wa->score; // tri décroissant
 }
 
+
+
+void collectAllWall(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall* candidat, int* candidatCount)
+{
+	// Vérifications des paramètres d'entrée
+	assert(self != NULL && "self ne doit pas être NULL");
+	assert(path != NULL && "path ne doit pas être NULL");
+	assert(candidat != NULL && "candidat ne doit pas être NULL");
+	assert(candidatCount != NULL && "candidatCount ne doit pas être NULL");
+	assert(pathSize >= 0 && pathSize <= MAX_GRID_SIZE * MAX_GRID_SIZE && "pathSize doit être dans une plage valide");
+
+	// Tableau pour suivre les murs déjà vus
+	bool seen[MAX_GRID_SIZE][MAX_GRID_SIZE][2];
+	memset(seen, 0, sizeof(seen)); // Initialiser le tableau à false
+
+	*candidatCount = 0;
+
+	// Stocker la taille de la grille localement
+	int gridSize = self->gridSize;
+	assert(gridSize > 0 && gridSize <= MAX_GRID_SIZE && "gridSize doit être valide");
+
+    int caseCount = gridSize * gridSize;
+
+    for (int i = 0; i < gridSize - 1; i++)
+    {
+        for (int j = 0; j < gridSize - 1; j++)
+        {
+			for (int k = 0; k < 2; k++)
+			{
+				if (k == WALL_TYPE_HORIZONTAL)
+				{
+					assert(*candidatCount < MAX_CANDIDATES && "Dépassement du nombre maximal de candidats"); 
+					QuoridorWall* currentCandidat = &candidat[*candidatCount]; 
+					currentCandidat->pos.i = i; 
+					currentCandidat->pos.j = j; 
+					currentCandidat->type = WALL_TYPE_HORIZONTAL; 
+					(*candidatCount)++; 
+				}
+                else
+                {
+					assert(*candidatCount < MAX_CANDIDATES && "Dépassement du nombre maximal de candidats"); 
+					QuoridorWall* currentCandidat = &candidat[*candidatCount]; 
+					currentCandidat->pos.i = i; 
+					currentCandidat->pos.j = j; 
+					currentCandidat->type = WALL_TYPE_VERTICAL; 
+                    (*candidatCount)++;
+                }
+			}
+        }
+    }
+}
+
 void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall* candidat, int* candidatCount)
 {
-    //tableau de 2  boolen pour savoir si les mur ont deja ete vus 
+    // Vérifications des paramètres d'entrée
+    assert(self != NULL && "self ne doit pas être NULL");
+    assert(path != NULL && "path ne doit pas être NULL");
+    assert(candidat != NULL && "candidat ne doit pas être NULL");
+    assert(candidatCount != NULL && "candidatCount ne doit pas être NULL");
+    assert(pathSize >= 0 && pathSize <= MAX_GRID_SIZE * MAX_GRID_SIZE && "pathSize doit être dans une plage valide");
 
-    bool seen[MAX_GRID_SIZE][MAX_GRID_SIZE][2] = { false }; // 2 types : horizontal / vertical}  
-
-
-    int maxCandidat = pathSize * 4; // 4 murs max par case	
+    // Tableau pour suivre les murs déjà vus
+    bool seen[MAX_GRID_SIZE][MAX_GRID_SIZE][2];
+    memset(seen, 0, sizeof(seen)); // Initialiser le tableau à false
 
     *candidatCount = 0;
 
+    // Stocker la taille de la grille localement
+    int gridSize = self->gridSize;
+    assert(gridSize > 0 && gridSize <= MAX_GRID_SIZE && "gridSize doit être valide");
 
-    for (int k = 0; k < pathSize; k++)
+ 
+
+    for (int k = 0; k < pathSize && *candidatCount < MAX_CANDIDATES; k++)
     {
+        // Vérifier que les coordonnées sont valides
         int i = path[k].i;
         int j = path[k].j;
+        assert(i >= 0 && i < gridSize && "i doit être dans les limites de la grille");
+        assert(j >= 0 && j < gridSize && "j doit être dans les limites de la grille");
 
-        if (i > 0 && !seen[i - 1][j][WALL_TYPE_HORIZONTAL]) // mur au dessus
+        // Vérifier les murs horizontaux avec toutes les vérifications nécessaires
+        if (i > 0 && j < gridSize && !seen[i - 1][j][WALL_TYPE_HORIZONTAL]) // mur au-dessus
         {
-            candidat[*candidatCount].pos.i = i - 1;
-            candidat[*candidatCount].pos.j = j;
-            candidat[*candidatCount].type = WALL_TYPE_HORIZONTAL;
+            assert(*candidatCount < MAX_CANDIDATES && "Dépassement du nombre maximal de candidats");
+            QuoridorWall* currentCandidat = &candidat[*candidatCount];
+            currentCandidat->pos.i = i - 1;
+            currentCandidat->pos.j = j;
+            currentCandidat->type = WALL_TYPE_HORIZONTAL;
             (*candidatCount)++;
             seen[i - 1][j][WALL_TYPE_HORIZONTAL] = true;
         }
-        if (i > 0 && !seen[i - 1][j - 1][WALL_TYPE_HORIZONTAL]) // mur au dessus
+
+        if (i > 0 && j > 0 && j - 1 < gridSize && !seen[i - 1][j - 1][WALL_TYPE_HORIZONTAL]) // mur au-dessus (gauche)
         {
-            candidat[*candidatCount].pos.i = i - 1;
-            candidat[*candidatCount].pos.j = j - 1;
-            candidat[*candidatCount].type = WALL_TYPE_HORIZONTAL;
+            assert(*candidatCount < MAX_CANDIDATES && "Dépassement du nombre maximal de candidats");
+            QuoridorWall* currentCandidat = &candidat[*candidatCount];
+            currentCandidat->pos.i = i - 1;
+            currentCandidat->pos.j = j - 1;
+            currentCandidat->type = WALL_TYPE_HORIZONTAL;
             (*candidatCount)++;
             seen[i - 1][j - 1][WALL_TYPE_HORIZONTAL] = true;
         }
 
-
-
-        if (i < self->gridSize - 1 && !seen[i][j][WALL_TYPE_HORIZONTAL]) // mur en dessous
+        if (i < gridSize - 1 && j < gridSize && !seen[i][j][WALL_TYPE_HORIZONTAL]) // mur en dessous
         {
-            candidat[*candidatCount].pos.i = i;
-            candidat[*candidatCount].pos.j = j;
-            candidat[*candidatCount].type = WALL_TYPE_HORIZONTAL;
+            assert(*candidatCount < MAX_CANDIDATES && "Dépassement du nombre maximal de candidats");
+            QuoridorWall* currentCandidat = &candidat[*candidatCount];
+            currentCandidat->pos.i = i;
+            currentCandidat->pos.j = j;
+            currentCandidat->type = WALL_TYPE_HORIZONTAL;
             (*candidatCount)++;
             seen[i][j][WALL_TYPE_HORIZONTAL] = true;
         }
-        if (i < self->gridSize - 1 && !seen[i][j - 1][WALL_TYPE_HORIZONTAL]) // mur en dessous
+
+        if (i < gridSize - 1 && j > 0 && j - 1 < gridSize && !seen[i][j - 1][WALL_TYPE_HORIZONTAL]) // mur en dessous (gauche)
         {
-            candidat[*candidatCount].pos.i = i;
-            candidat[*candidatCount].pos.j = j - 1;
-            candidat[*candidatCount].type = WALL_TYPE_HORIZONTAL;
+            assert(*candidatCount < MAX_CANDIDATES && "Dépassement du nombre maximal de candidats");
+            QuoridorWall* currentCandidat = &candidat[*candidatCount];
+            currentCandidat->pos.i = i;
+            currentCandidat->pos.j = j - 1;
+            currentCandidat->type = WALL_TYPE_HORIZONTAL;
             (*candidatCount)++;
             seen[i][j - 1][WALL_TYPE_HORIZONTAL] = true;
         }
 
-
-
-
-
-        if (j > 0 && !seen[i][j - 1][WALL_TYPE_VERTICAL]) // mur a gauche
+        // Vérifier les murs verticaux
+        if (j > 0 && i < gridSize && !seen[i][j - 1][WALL_TYPE_VERTICAL]) // mur à gauche
         {
-            candidat[*candidatCount].pos.i = i;
-            candidat[*candidatCount].pos.j = j - 1;
-            candidat[*candidatCount].type = WALL_TYPE_VERTICAL;
+            assert(*candidatCount < MAX_CANDIDATES && "Dépassement du nombre maximal de candidats");
+            QuoridorWall* currentCandidat = &candidat[*candidatCount];
+            currentCandidat->pos.i = i;
+            currentCandidat->pos.j = j - 1;
+            currentCandidat->type = WALL_TYPE_VERTICAL;
             (*candidatCount)++;
             seen[i][j - 1][WALL_TYPE_VERTICAL] = true;
         }
-        if (j > 0 && !seen[i - 1][j - 1][WALL_TYPE_VERTICAL]) // mur a gauche
+
+        if (j > 0 && i > 0 && i - 1 < gridSize && !seen[i - 1][j - 1][WALL_TYPE_VERTICAL]) // mur à gauche (haut)
         {
-            candidat[*candidatCount].pos.i = i - 1;
-            candidat[*candidatCount].pos.j = j - 1;
-            candidat[*candidatCount].type = WALL_TYPE_VERTICAL;
+            assert(*candidatCount < MAX_CANDIDATES && "Dépassement du nombre maximal de candidats");
+            QuoridorWall* currentCandidat = &candidat[*candidatCount];
+            currentCandidat->pos.i = i - 1;
+            currentCandidat->pos.j = j - 1;
+            currentCandidat->type = WALL_TYPE_VERTICAL;
             (*candidatCount)++;
             seen[i - 1][j - 1][WALL_TYPE_VERTICAL] = true;
         }
 
-
-
-
-        if (j < self->gridSize - 1 && !seen[i][j][WALL_TYPE_VERTICAL]) // mur a droite
+        if (j < gridSize - 1 && i < gridSize && !seen[i][j][WALL_TYPE_VERTICAL]) // mur à droite
         {
-            candidat[*candidatCount].pos.i = i;
-            candidat[*candidatCount].pos.j = j;
-            candidat[*candidatCount].type = WALL_TYPE_VERTICAL;
+            assert(*candidatCount < MAX_CANDIDATES && "Dépassement du nombre maximal de candidats");
+            QuoridorWall* currentCandidat = &candidat[*candidatCount];
+            currentCandidat->pos.i = i;
+            currentCandidat->pos.j = j;
+            currentCandidat->type = WALL_TYPE_VERTICAL;
             (*candidatCount)++;
             seen[i][j][WALL_TYPE_VERTICAL] = true;
         }
-        if (j < self->gridSize - 1 && !seen[i - 1][j][WALL_TYPE_VERTICAL]) // mur a droite
+
+        if (j < gridSize - 1 && i > 0 && i - 1 < gridSize && !seen[i - 1][j][WALL_TYPE_VERTICAL]) // mur à droite (haut)
         {
-            candidat[*candidatCount].pos.i = i - 1;
-            candidat[*candidatCount].pos.j = j;
-            candidat[*candidatCount].type = WALL_TYPE_VERTICAL;
+            assert(*candidatCount < MAX_CANDIDATES && "Dépassement du nombre maximal de candidats");
+            QuoridorWall* currentCandidat = &candidat[*candidatCount];
+            currentCandidat->pos.i = i - 1;
+            currentCandidat->pos.j = j;
+            currentCandidat->type = WALL_TYPE_VERTICAL;
             (*candidatCount)++;
             seen[i - 1][j][WALL_TYPE_VERTICAL] = true;
         }
     }
 
-    return;
+    // Vérification finale
+    assert(*candidatCount <= MAX_CANDIDATES && "Trop de candidats détectés");
 }
 
-void collectFewWallsInFrontOfPath(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall* candidat, int* candidatCount) //regarde les murs bien orient au debut du chemin
-{
-    short int nbrOfcaseToAnalysis = 4; // nombre de case a analyser
-    int maxSteps = (pathSize - 1) < nbrOfcaseToAnalysis ? (pathSize - 1) : nbrOfcaseToAnalysis; // examine les 4 premiere case 
-    int maxWalls = 32; // nombre max de murs candidats 
 
-
-    *candidatCount = 0;
-
-
-    bool seen[MAX_GRID_SIZE][MAX_GRID_SIZE][2] = { false }; // 2 types : horizontal / vertical 
-
-
-    for (int k = 0; k < maxSteps && *candidatCount < maxWalls; k++)
-    {
-        int i = path[k].i;
-        int j = path[k].j;
-
-        if (i > 0 && !seen[i - 1][j][WALL_TYPE_HORIZONTAL]) // mur au dessus
-        {
-            candidat[*candidatCount].pos.i = i - 1;
-            candidat[*candidatCount].pos.j = j;
-            candidat[*candidatCount].type = WALL_TYPE_HORIZONTAL;
-            (*candidatCount)++;
-            seen[i - 1][j][WALL_TYPE_HORIZONTAL] = true;
-        }
-        if (i < self->gridSize - 1 && !seen[i + 1][j][WALL_TYPE_HORIZONTAL]) // mur en dessous
-        {
-            candidat[*candidatCount].pos.i = i;
-            candidat[*candidatCount].pos.j = j;
-            candidat[*candidatCount].type = WALL_TYPE_HORIZONTAL;
-            (*candidatCount)++;
-            seen[i + 1][j][WALL_TYPE_HORIZONTAL] = true;
-        }
-        if (j > 0 && !seen[i][j - 1][WALL_TYPE_VERTICAL]) // mur a gauche
-        {
-            candidat[*candidatCount].pos.i = i;
-            candidat[*candidatCount].pos.j = j - 1;
-            candidat[*candidatCount].type = WALL_TYPE_VERTICAL;
-            (*candidatCount)++;
-            seen[i][j - 1][WALL_TYPE_VERTICAL] = true;
-        }
-        if (j < self->gridSize - 1 && !seen[i][j + 1][WALL_TYPE_VERTICAL]) // mur a droite
-        {
-            candidat[*candidatCount].pos.i = i;
-            candidat[*candidatCount].pos.j = j;
-            candidat[*candidatCount].type = WALL_TYPE_VERTICAL;
-            (*candidatCount)++;
-            seen[i][j + 1][WALL_TYPE_VERTICAL] = true;
-        }
-
-
-        //int i = path[k].i; 
-        //int j = path[k].j; 
-        //int di = path[k + 1].i - i; 
-        //int dj = path[k + 1].j - j; 
-
-        //// Mouvement vertical doncc candidat mur horizontal
-        //if (di != 0 && i > 0 && !seen[i - 1][j][WALL_TYPE_HORIZONTAL]) 
-        //{
-        //	candidat[*candidatCount].type = WALL_TYPE_HORIZONTAL;
-        //	candidat[*candidatCount].pos.i = i - 1;
-        //	candidat[*candidatCount].pos.j = j;
-        //	(*candidatCount)++;
-        //	seen[i - 1][j][WALL_TYPE_HORIZONTAL] = true;
-        //}
-
-        //// Mouvement horizontal donc candidat mur vertical
-        //if (dj != 0 && j > 0 && !seen[i][j - 1][WALL_TYPE_VERTICAL]) 
-        //{
-        //	candidat[*candidatCount].type = WALL_TYPE_VERTICAL;
-        //	candidat[*candidatCount].pos.i = i;
-        //	candidat[*candidatCount].pos.j = j - 1;
-        //	(*candidatCount)++;
-        //	seen[i][j - 1][WALL_TYPE_VERTICAL] = true;
-        //}
-    }
-
-    return;
-}
+//void collectAllWallsNearPath(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall* candidat, int* candidatCount)
+//{
+//    // Tableau pour suivre les murs déjà vus
+//    bool seen[MAX_GRID_SIZE][MAX_GRID_SIZE][2] ; // 2 types : horizontal / vertical  
+//	memset(seen, 0, sizeof(seen)); // Initialiser le tableau à false
+//
+//    *candidatCount = 0;
+//
+//    // Stocker la taille de la grille localement pour éviter de déréférencer `self` à chaque itération
+//    int gridSize = self->gridSize;
+//
+//    for (int k = 0; k < pathSize; k++)
+//    {
+//        // Stocker les coordonnées localement pour éviter de déréférencer `path[k]` plusieurs fois
+//        int i = path[k].i;
+//        int j = path[k].j;
+//
+//        // Vérifier les murs horizontaux
+//        if (i > 0 && !seen[i - 1][j][WALL_TYPE_HORIZONTAL]) // mur au-dessus
+//        {
+//            QuoridorWall* currentCandidat = &candidat[*candidatCount];
+//            currentCandidat->pos.i = i - 1;
+//            currentCandidat->pos.j = j;
+//            currentCandidat->type = WALL_TYPE_HORIZONTAL;
+//            (*candidatCount)++;
+//            seen[i - 1][j][WALL_TYPE_HORIZONTAL] = true;
+//        }
+//        if (i > 0 && !seen[i - 1][j - 1][WALL_TYPE_HORIZONTAL]) // mur au-dessus (gauche)
+//        {
+//            QuoridorWall* currentCandidat = &candidat[*candidatCount];
+//            currentCandidat->pos.i = i - 1;
+//            currentCandidat->pos.j = j - 1;
+//            currentCandidat->type = WALL_TYPE_HORIZONTAL;
+//            (*candidatCount)++;
+//            seen[i - 1][j - 1][WALL_TYPE_HORIZONTAL] = true;
+//        }
+//        if (i < gridSize - 1 && !seen[i][j][WALL_TYPE_HORIZONTAL]) // mur en dessous
+//        {
+//            QuoridorWall* currentCandidat = &candidat[*candidatCount];
+//            currentCandidat->pos.i = i;
+//            currentCandidat->pos.j = j;
+//            currentCandidat->type = WALL_TYPE_HORIZONTAL;
+//            (*candidatCount)++;
+//            seen[i][j][WALL_TYPE_HORIZONTAL] = true;
+//        }
+//        if (i < gridSize - 1 && !seen[i][j - 1][WALL_TYPE_HORIZONTAL]) // mur en dessous (gauche)
+//        {
+//            QuoridorWall* currentCandidat = &candidat[*candidatCount];
+//            currentCandidat->pos.i = i;
+//            currentCandidat->pos.j = j - 1;
+//            currentCandidat->type = WALL_TYPE_HORIZONTAL;
+//            (*candidatCount)++;
+//            seen[i][j - 1][WALL_TYPE_HORIZONTAL] = true;
+//        }
+//
+//        // Vérifier les murs verticaux
+//        if (j > 0 && !seen[i][j - 1][WALL_TYPE_VERTICAL]) // mur à gauche
+//        {
+//            QuoridorWall* currentCandidat = &candidat[*candidatCount];
+//            currentCandidat->pos.i = i;
+//            currentCandidat->pos.j = j - 1;
+//            currentCandidat->type = WALL_TYPE_VERTICAL;
+//            (*candidatCount)++;
+//            seen[i][j - 1][WALL_TYPE_VERTICAL] = true;
+//        }
+//        if (j > 0 && !seen[i - 1][j - 1][WALL_TYPE_VERTICAL]) // mur à gauche (haut)
+//        {
+//            QuoridorWall* currentCandidat = &candidat[*candidatCount];
+//            currentCandidat->pos.i = i - 1;
+//            currentCandidat->pos.j = j - 1;
+//            currentCandidat->type = WALL_TYPE_VERTICAL;
+//            (*candidatCount)++;
+//            seen[i - 1][j - 1][WALL_TYPE_VERTICAL] = true;
+//        }
+//        if (j < gridSize - 1 && !seen[i][j][WALL_TYPE_VERTICAL]) // mur à droite
+//        {
+//            QuoridorWall* currentCandidat = &candidat[*candidatCount];
+//            currentCandidat->pos.i = i;
+//            currentCandidat->pos.j = j;
+//            currentCandidat->type = WALL_TYPE_VERTICAL;
+//            (*candidatCount)++;
+//            seen[i][j][WALL_TYPE_VERTICAL] = true;
+//        }
+//        if (j < gridSize - 1 && !seen[i - 1][j][WALL_TYPE_VERTICAL]) // mur à droite (haut)
+//        {
+//            QuoridorWall* currentCandidat = &candidat[*candidatCount];
+//            currentCandidat->pos.i = i - 1;
+//            currentCandidat->pos.j = j;
+//            currentCandidat->type = WALL_TYPE_VERTICAL;
+//            (*candidatCount)++;
+//            seen[i - 1][j][WALL_TYPE_VERTICAL] = true;
+//        }
+//    }
+//
+//    return;
+//}
+//
+//void collectFewWallsInFrontOfPath(QuoridorCore* self, QuoridorPos* path, int pathSize, QuoridorWall* candidat, int* candidatCount) //regarde les murs bien orient au debut du chemin
+//{
+//    short int nbrOfcaseToAnalysis = 4; // nombre de case a analyser
+//    int maxSteps = (pathSize - 1) < nbrOfcaseToAnalysis ? (pathSize - 1) : nbrOfcaseToAnalysis; // examine les 4 premiere case 
+//    int maxWalls = 32; // nombre max de murs candidats 
+//
+//
+//    *candidatCount = 0;
+//
+//
+//    bool seen[MAX_GRID_SIZE][MAX_GRID_SIZE][2] = { false }; // 2 types : horizontal / vertical 
+//
+//
+//    for (int k = 0; k < maxSteps && *candidatCount < maxWalls; k++)
+//    {
+//        int i = path[k].i;
+//        int j = path[k].j;
+//
+//        if (i > 0 && !seen[i - 1][j][WALL_TYPE_HORIZONTAL]) // mur au dessus
+//        {
+//            candidat[*candidatCount].pos.i = i - 1;
+//            candidat[*candidatCount].pos.j = j;
+//            candidat[*candidatCount].type = WALL_TYPE_HORIZONTAL;
+//            (*candidatCount)++;
+//            seen[i - 1][j][WALL_TYPE_HORIZONTAL] = true;
+//        }
+//        if (i < self->gridSize - 1 && !seen[i + 1][j][WALL_TYPE_HORIZONTAL]) // mur en dessous
+//        {
+//            candidat[*candidatCount].pos.i = i;
+//            candidat[*candidatCount].pos.j = j;
+//            candidat[*candidatCount].type = WALL_TYPE_HORIZONTAL;
+//            (*candidatCount)++;
+//            seen[i + 1][j][WALL_TYPE_HORIZONTAL] = true;
+//        }
+//        if (j > 0 && !seen[i][j - 1][WALL_TYPE_VERTICAL]) // mur a gauche
+//        {
+//			int idx = *candidatCount;
+//
+//            candidat[*candidatCount].pos.i = i;
+//            candidat[*candidatCount].pos.j = j - 1;
+//            candidat[*candidatCount].type = WALL_TYPE_VERTICAL;
+//            (*candidatCount)++;
+//            seen[i][j - 1][WALL_TYPE_VERTICAL] = true;
+//        }
+//        if (j < self->gridSize - 1 && !seen[i][j + 1][WALL_TYPE_VERTICAL]) // mur a droite
+//        {
+//            candidat[*candidatCount].pos.i = i;
+//            candidat[*candidatCount].pos.j = j;
+//            candidat[*candidatCount].type = WALL_TYPE_VERTICAL;
+//            (*candidatCount)++;
+//            seen[i][j + 1][WALL_TYPE_VERTICAL] = true;
+//        }
+//
+//
+//        //int i = path[k].i; 
+//        //int j = path[k].j; 
+//        //int di = path[k + 1].i - i; 
+//        //int dj = path[k + 1].j - j; 
+//
+//        //// Mouvement vertical doncc candidat mur horizontal
+//        //if (di != 0 && i > 0 && !seen[i - 1][j][WALL_TYPE_HORIZONTAL]) 
+//        //{
+//        //	candidat[*candidatCount].type = WALL_TYPE_HORIZONTAL;
+//        //	candidat[*candidatCount].pos.i = i - 1;
+//        //	candidat[*candidatCount].pos.j = j;
+//        //	(*candidatCount)++;
+//        //	seen[i - 1][j][WALL_TYPE_HORIZONTAL] = true;
+//        //}
+//
+//        //// Mouvement horizontal donc candidat mur vertical
+//        //if (dj != 0 && j > 0 && !seen[i][j - 1][WALL_TYPE_VERTICAL]) 
+//        //{
+//        //	candidat[*candidatCount].type = WALL_TYPE_VERTICAL;
+//        //	candidat[*candidatCount].pos.i = i;
+//        //	candidat[*candidatCount].pos.j = j - 1;
+//        //	(*candidatCount)++;
+//        //	seen[i][j - 1][WALL_TYPE_VERTICAL] = true;
+//        //}
+//    }
+//
+//    return;
+//}
 
 void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* bestWalls, int* wallCount)
 {
@@ -727,15 +922,24 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
     QuoridorPos enemyPath[MAX_GRID_SIZE * MAX_GRID_SIZE];
 
 
-    actualPlayerSize = BFS_search2(self, player, playerPath);
-    actualEnemySize = BFS_search2(self, otherPlayer, enemyPath);
+
+#ifndef A_STAR
+    actualPlayerSize = BFS_search2(self, player, playerPath); 
+    actualEnemySize = BFS_search2(self, otherPlayer, enemyPath); 
+#else // !A_STAR
+	actualPlayerSize = AStar_search(self, player, playerPath);
+	actualEnemySize = AStar_search(self, otherPlayer, enemyPath);
+#endif
+    
 
     // ==> reupere les murs autour du chemin ennemi
 
-    QuoridorWall attemptingWalls[100]; // ca sera les mur a tester
+    QuoridorWall attemptingWalls[MAX_CANDIDATES]; // ca sera les mur a tester
 
 #ifdef ALL_WALLS
-    collectAllWallsNearPath(self, enemyPath, actualEnemySize, attemptingWalls, &attemptingCount);
+    //collectAllWallsNearPath(self, enemyPath, actualEnemySize, attemptingWalls, &attemptingCount);
+    collectAllWallsNearPath(self, enemyPath, actualEnemySize, attemptingWalls, &attemptingCount); 
+
 #endif
 #ifndef ALL_WALLS
     collectFewWallsInFrontOfPath(self, enemyPath, actualEnemySize, attemptingWalls, &attemptingCount);
@@ -765,8 +969,17 @@ void getBestWall(QuoridorCore* self, int player, int tolerance, QuoridorWall* be
             copy.vWalls[i][j] = WALL_STATE_START;
             copy.vWalls[i + 1][j] = WALL_STATE_END;
         }
+
+
+#ifndef A_STAR
         playerSize = BFS_search2(&copy, player, playerPath);
         enemySize = BFS_search2(&copy, otherPlayer, enemyPath);
+#else
+		playerSize = AStar_search(&copy, player, playerPath);
+		enemySize = AStar_search(&copy, otherPlayer, enemyPath);
+#endif
+
+       
 
         playerRatio = playerSize - actualPlayerSize; //le nombre de case en + pour le joeur
         enemyRatio = enemySize - actualEnemySize;    // le nombre de cases en + pour l enemy
@@ -890,3 +1103,189 @@ int BFS_search2(QuoridorCore* self, int playerID, QuoridorPos* tab)
     printf("bruhh %d %d\n", self->positions[playerID].i, self->positions[playerID].j);
     return -1; // Retourne -1 si aucun chemin n'est trouvé
 }
+
+
+int StarHeuristique(QuoridorCore *self,node *node,int playerId)
+{
+	    int gridsize = self->gridSize;
+        // Distance brute jusqu'à la ligne d’arrivée
+        int distance;  
+		if (playerId == 0) 
+        {
+			distance = gridsize - 1 - node->pos.j;  
+		}
+        else 
+        {
+			distance = node->pos.j;  
+		}
+
+
+		
+        int centerPenalty = abs(node->pos.i - gridsize / 2); // idee malus si on est loin du centre
+
+        distance = distance * 2 + centerPenalty; // ponderation 
+        return  distance; 
+}
+
+
+
+bool isWallBetween(QuoridorCore *self,QuoridorPos depart, QuoridorPos arrive)
+{
+    if (depart.i == arrive.i && depart.j == arrive.j)
+        return false; // même case
+
+  
+    if (depart.i > arrive.i) {
+        
+        return QuoridorCore_hasWallAbove(self, depart.i, depart.j);
+    }
+    else if (depart.i < arrive.i) {
+        
+        return QuoridorCore_hasWallBelow(self, depart.i, depart.j);
+    }
+
+   
+    if (depart.j > arrive.j) {
+       
+        return QuoridorCore_hasWallLeft(self, depart.i, depart.j);
+    }
+    else if (depart.j < arrive.j) {
+       
+        return QuoridorCore_hasWallRight(self, depart.i, depart.j);
+    }
+
+    return false;
+} 
+
+int AStar_search(QuoridorCore* self, int playerID, QuoridorPos* outPath)
+{
+    QuoridorPos start = self->positions[playerID];
+    int gridSize = self->gridSize;
+
+    // Objectif : atteindre n'importe quelle ligne (haut ou bas selon le joueur)
+    int goalCol = (playerID == 0) ? gridSize - 1 : 0;
+
+    node nodes[MAX_GRID_SIZE][MAX_GRID_SIZE]; 
+    memset(nodes, 0, sizeof(nodes));
+
+  
+    for (int i = 0; i < gridSize; i++)
+        for (int j = 0; j < gridSize; j++) 
+        {
+            nodes[i][j].pos.i = i; 
+            nodes[i][j].pos.j = j; 
+            nodes[i][j].gscore = 99999; 
+            nodes[i][j].hscore = 99999;
+            nodes[i][j].fscore = 99999;
+            nodes[i][j].inOpenList = false; 
+            nodes[i][j].inCloseList = false; 
+        }
+
+    nodes[start.i][start.j].gscore = 0;
+    nodes[start.i][start.j].hscore = 0; 
+    nodes[start.i][start.j].fscore = nodes[start.i][start.j].hscore;  //fscore h + g mais ici g = 0
+    
+    nodes[start.i][start.j].parent = start; 
+    nodes[start.i][start.j].inOpenList = true;  
+	nodes[start.i][start.j].inCloseList = false;
+
+    while (true) 
+    {
+     
+        node* current = NULL;    // Trouver le noeud avec le plus petit fCost dans la open list
+        for (int i = 0; i < gridSize; i++) 
+        {
+            for (int j = 0; j < gridSize; j++) 
+            {
+                if (nodes[i][j].inOpenList && !nodes[i][j].inCloseList) 
+                {
+                    if (current == NULL || nodes[i][j].fscore < current->fscore)
+                        current = &nodes[i][j]; 
+                }
+            }
+        }
+
+        if (!current) break; // aucun chemin trouvé
+
+        current->inCloseList = true;
+        current->inOpenList = false;
+
+        // CORRECTION : Vérifier la vraie condition de victoire
+        bool hasWon = false;
+        if (playerID == 0) {
+            // Joueur 0 : atteindre j = gridSize-1 (côté droit)
+            hasWon = (current->pos.j == gridSize - 1);
+        }
+        else {
+            // Joueur 1 : atteindre j = 0 (côté gauche)
+            hasWon = (current->pos.j == 0);
+        }
+
+        if (hasWon) {
+            // Reconstruire le chemin
+            QuoridorPos tempPath[MAX_GRID_SIZE * MAX_GRID_SIZE];
+            int pathLen = 0;
+
+            QuoridorPos p = current->pos;
+
+            while (!(p.i == start.i && p.j == start.j)) {
+                assert(pathLen < MAX_GRID_SIZE * MAX_GRID_SIZE && "Chemin du A* trop grand");
+                tempPath[pathLen++] = p;
+                p = nodes[p.i][p.j].parent;
+            }
+
+            // Ajouter la position de départ
+            if (pathLen < MAX_GRID_SIZE * MAX_GRID_SIZE) {
+                tempPath[pathLen++] = start;
+            }
+
+            // Remettre dans l'ordre : start → goal
+            for (int i = 0; i < pathLen; i++) {
+                outPath[i] = tempPath[pathLen - 1 - i];
+            }
+
+            return pathLen; // Retourner la taille du chemin trouvé
+        }
+
+        // Explorer voisins (haut/bas/gauche/droite)
+        int dI[] = { -1, +1, 0, 0 };
+        int dJ[] = { 0, 0, -1, +1 };
+
+        for (int d = 0; d < 4; d++) 
+        {
+            int ni = current->pos.i + dI[d];
+            int nj = current->pos.j + dJ[d];
+
+            if (ni < 0 || ni >= gridSize || nj < 0 || nj >= gridSize)
+                continue;
+
+
+			QuoridorPos neighborPos = { ni, nj };
+
+            if (isWallBetween(self, current->pos,neighborPos )) 
+                continue;
+
+            node* neighbor = &nodes[ni][nj]; 
+            if (neighbor->inCloseList) 
+                continue;
+
+            int tentativeG = current->gscore + 1;
+           
+            if (!neighbor->inOpenList || tentativeG < neighbor->gscore) 
+            {
+                neighbor->gscore = tentativeG;
+                neighbor->hscore = StarHeuristique(self,neighbor,playerID);
+                neighbor->fscore = neighbor->gscore + neighbor->hscore;
+                
+                neighbor->parent = current->pos;
+                neighbor->inOpenList = true;
+				neighbor->inCloseList = false;
+            }
+        }
+    }
+
+    return 0; // pas de chemin trouvé
+}
+
+
+
