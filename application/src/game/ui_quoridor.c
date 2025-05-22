@@ -8,6 +8,7 @@
 #include "game/game_common.h"
 #include "game/scene.h"
 #include "core/graph.h"
+#include "core/quoridor_ai.h"
 static bool UIQuoridor_isPlayerTurn(UIQuoridor *self)
 {
     assert(self && "The UIQuoridor must be created");
@@ -833,6 +834,7 @@ void UIQuoridor_renderPageMain(UIQuoridor *self)
     assert(self && "The UIQuoridor must be created");
 
     Camera *camera = Scene_getCamera(self->m_scene);
+    QuoridorCore* core = Scene_getQuoridorCore(self->m_scene);
 
     // UIButtons
     UIButton_render(self->m_buttonSettings);
@@ -871,6 +873,39 @@ void UIQuoridor_renderPageMain(UIQuoridor *self)
             self->m_textTitleDistances,
             self->m_textDistances, tmp
         );
+        y += blockSep;
+        for (int p = 0; p < tmp; p++)
+        {
+            float score = QuoridorCore_scoreNoRand(core, p) + 10;
+            if (score < 0)
+                score = 0;
+            if (score > 20)
+                score = 20;
+            printf("%.2f\n", score);
+            SDL_FRect dstRect = { 0 };
+            dstRect.x = roundf(x);
+            dstRect.y = roundf(y);
+            dstRect.w = roundf(panelWidth);
+            dstRect.h = roundf(50);
+            Game_setRenderDrawColor(g_colors.cell, 255);
+            SDL_RenderFillRect(g_renderer, &dstRect);
+            dstRect.x = roundf(x + 4);
+            dstRect.y = roundf(y + 4);
+            dstRect.w = roundf((panelWidth - 8) / 20 * (score));
+            dstRect.h = roundf(42);
+            if (p == 0)
+                Game_setRenderDrawColor(g_colors.player0, 255);
+            if (p == 1)
+                Game_setRenderDrawColor(g_colors.player1, 255);
+            if (p == 2)
+                Game_setRenderDrawColor(g_colors.player2, 255);
+            if (p == 3)
+                Game_setRenderDrawColor(g_colors.player3, 255);
+            SDL_RenderFillRect(g_renderer, &dstRect);
+            y += blockSep + 50;
+
+        }
+
     }
 }
 

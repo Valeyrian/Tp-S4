@@ -139,6 +139,7 @@ int AStar_search(QuoridorCore* self, int playerID, QuoridorPos* outPath);
 
 bool isWallBetween(QuoridorCore* self, QuoridorPos depart, QuoridorPos arrive);
 int StarHeuristique(QuoridorCore* self, node* node, int playerId);
+float QuoridorCore_scoreNoRand(QuoridorCore* self, int playerID);
 
 
 
