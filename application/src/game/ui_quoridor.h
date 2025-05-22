@@ -30,9 +30,9 @@ typedef struct UIQuoridor
     Text *m_textTitleInfo;
     Text *m_textInfo;
     Text *m_textTitleWalls;
-    Text *m_textWalls[2];
+    Text *m_textWalls[4];
     Text *m_textTitleDistances;
-    Text *m_textDistances[2];
+    Text *m_textDistances[4];
     Text *m_textTitleSettings;
 
     UIButton *m_buttonSettings;

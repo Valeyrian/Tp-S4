@@ -56,8 +56,12 @@ typedef struct GameColors
     SDL_Color cell;
     SDL_Color player0;
     SDL_Color player1;
+    SDL_Color player2;
+    SDL_Color player3;
     SDL_Color move0;
     SDL_Color move1;
+    SDL_Color move2;
+    SDL_Color move3;
     SDL_Color selected;
 } GameColors;
 
