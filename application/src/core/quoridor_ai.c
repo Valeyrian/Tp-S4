@@ -63,7 +63,6 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
 	int playerA = playerID;
 	int playerB = playerID ^ 1;
 
-
 #ifdef FOURPLAYERS
 	playerB = (playerID + 1) % 4;
 	int playerC = (playerID + 2) % 4;
@@ -1173,6 +1172,60 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 
 		return 0; // pas de chemin trouvé
 	}
+	float QuoridorCore_scoreNoRand(QuoridorCore* self, int playerID)
+	{
+		int playerA = playerID;
+		int playerB = playerID ^ 1;
 
+#ifdef FOURPLAYERS
+		playerB = (playerID + 1) % 4;
+		int playerC = (playerID + 2) % 4;
+		int playerD = (playerID + 3) % 4;
+		QuoridorPos playerCpath[MAX_GRID_SIZE * MAX_GRID_SIZE];
+		QuoridorPos playerDpath[MAX_GRID_SIZE * MAX_GRID_SIZE];
+#endif
+		int distA = 0;
+		int distB = 0;
+		int distC = 0;
+		int distD = 0;
+
+
+		QuoridorPos playerApath[MAX_GRID_SIZE * MAX_GRID_SIZE];
+		QuoridorPos playerBpath[MAX_GRID_SIZE * MAX_GRID_SIZE];
+
+
+
+#ifndef A_STAR 
+		distA = BFS_search2(self, playerA, playerApath);
+		distB = BFS_search2(self, playerB, playerBpath);
+#else
+		distA = AStar_search(self, playerA, playerApath);
+		distB = AStar_search(self, playerB, playerBpath);
+#endif
+		float score = (float)(distB - distA);
+
+#ifdef FOURPLAYERS
+#ifndef A_STAR 
+		distC = BFS_search2(self, playerC, playerCpath);
+		distD = BFS_search2(self, playerD, playerDpath);
+#else
+		distC = AStar_search(self, playerC, playerCpath);
+		distD = AStar_search(self, playerD, playerDpath);
+#endif
+		score = (float)((distB + distC + distD)/3 - distA);
+#endif // FOURPLAYERS
+
+
+
+
+
+		//printf("pos = %d,%d   %.2f\n", self->positions[playerA].i, self->positions[playerA].j,score);
+
+
+
+
+
+		return score;
+	}
 
 
