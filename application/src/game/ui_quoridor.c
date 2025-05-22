@@ -9,6 +9,9 @@
 #include "game/scene.h"
 #include "core/graph.h"
 #include "core/quoridor_ai.h"
+#include <time.h>
+
+
 static bool UIQuoridor_isPlayerTurn(UIQuoridor *self)
 {
     assert(self && "The UIQuoridor must be created");
@@ -41,7 +44,14 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
             case 2: depth = 5; break;
             }
 
+			clock_t startTime = clock();
+
             self->m_aiTurn = QuoridorCore_computeTurn(core, depth, self->m_aiData[core->playerID]);
+
+			clock_t endTime = clock();
+
+			core->timeElapsed[core->playerID] += (float)(endTime - startTime) / CLOCKS_PER_SEC;  // temps que l'ia a mis
+
         }
         else
         {
@@ -67,6 +77,11 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
     else
     {
         // Tour du joueur
+
+		clock_t startTime = clock();
+        clock_t endTime;
+
+
         const int gridSize = core->gridSize;
         Input *input = Scene_getInput(self->m_scene);
         if (input->validatePressed == false) return;
@@ -80,8 +95,12 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
                 {
                     if (QuoridorCore_canMoveTo(core, i, j))
                     {
+						clock_t endTime = clock();  
                         QuoridorCore_moveTo(core, i, j);
+
+						core->timeElapsed[core->playerID] = (float)(endTime - startTime) / CLOCKS_PER_SEC;  
                         //QuoridorCore_print(core);
+
                     }
                 }
             }
@@ -95,7 +114,9 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
                 {
                     if (QuoridorCore_canPlayWall(core, WALL_TYPE_HORIZONTAL, i, j))
                     {
+						endTime = clock(); 
                         QuoridorCore_playWall(core, WALL_TYPE_HORIZONTAL, i, j);
+						core->timeElapsed[core->playerID] = (float)(endTime - startTime) / CLOCKS_PER_SEC; 
                         //QuoridorCore_print(core);
                     }
                 }
@@ -103,7 +124,9 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
                 {
                     if (QuoridorCore_canPlayWall(core, WALL_TYPE_VERTICAL, i, j))
                     {
+                        endTime = clock();
                         QuoridorCore_playWall(core, WALL_TYPE_VERTICAL, i, j);
+						core->timeElapsed[core->playerID] = (float)(endTime - startTime) / CLOCKS_PER_SEC;  
                         //QuoridorCore_print(core);
                     }
                 }
