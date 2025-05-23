@@ -79,14 +79,22 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
 	QuoridorPos playerBpath[MAX_GRID_SIZE * MAX_GRID_SIZE];
 	if (self->playerCount == 8)
 	{
-		distA = BFS_search2(self, playerA, playerApath);
+#ifdef A_STAR
+		distA = AStar_search(self, playerA, playerApath); 
+#else 
+		distA = BFS_search2(self, playerA, playerApath); 
+#endif
+		
 		float scores = 0;
 
 		for (int i = 0; i < 7; i++)
 		{
 			playerA = (playerA + 1) % 8;
+#ifdef A_STAR
+			scores += AStar_search(self, playerA, playerApath);
+#else 
 			scores += BFS_search2(self, playerA, playerApath);
-
+#endif
 
 		}
 		scores -= distA;
@@ -211,7 +219,6 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
 	const bool maximizing = (currDepth % 2) == 0;
 	float value = maximizing ? -INFINITY : INFINITY;
 
-	// Try moving to valid positions
 	for (int i = 0; i < MAX_GRID_SIZE; i++)
 	{
 		for (int j = 0; j < MAX_GRID_SIZE; j++)
@@ -259,19 +266,18 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
 						turn->j = j;
 					}
 
-					// Alpha-beta pruning
+				
 					if (value <= alpha)
-						return value; // Prune - opponent won't allow this branch
+						return value; 
 					beta = fminf(beta, value);
 				}
 			}
 		}
 	}
 
-	// Try placing walls
-	QuoridorWall walls[MAX_BEST_WALLS] = { 0 };  // Initialize array of 5 walls
+	QuoridorWall walls[MAX_BEST_WALLS] = { 0 };  
 	int wallCount = 0;
-	getBestWall(self, playerID, 999, walls, &wallCount); // Get best walls to play
+	getBestWall(self, playerID, 999, walls, &wallCount); 
 
 	for (int m = 0; m < wallCount; m++)
 	{
@@ -303,9 +309,8 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
 				turn->j = walls[m].pos.j;
 			}
 
-			// Alpha-beta pruning
 			if (value >= beta)
-				return value; // Prune - opponent won't allow this branch
+				return value; 
 			alpha = fmaxf(alpha, value);
 		}
 		else
@@ -323,7 +328,7 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
 
 			// Alpha-beta pruning
 			if (value <= alpha)
-				return value; // Prune - opponent won't allow this branch
+				return value; 
 			beta = fminf(beta, value);
 		}
 	}
@@ -364,8 +369,8 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 
 	ListData* database;
 	QuoridorData turn;  
-	int minmaxdepth = 4;
-	if(self->playerCount == 4 || self->playerCount == 8)
+	int minmaxdepth = depth;
+	if(self->playerCount == 4 || self->playerCount == 8) //bride si bcp de joueurs
 		minmaxdepth = 2;
 
 	float childValue = QuoridorCore_minMax(self, self->playerID, 0, minmaxdepth, alpha, beta, &childTurn, aiData, 0);
@@ -1262,15 +1267,25 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 		QuoridorPos playerBpath[MAX_GRID_SIZE * MAX_GRID_SIZE];
 		if (self->playerCount == 8)
 		{
-			distA = BFS_search2(self, playerA, playerApath);
+
+#ifdef A_STAR
+			distA = AStar_search(self, playerA, playerApath); 
+#else
+			distA = BFS_search2(self, playerA, playerApath); 
+#endif
+
 			float scores = 0;
 
 			for (int i = 0; i < 7; i++)
 			{
 				playerA = (playerA + 1) % 8;
+				
+
+#ifdef A_STAR 
+				scores += AStar_search(self, playerA, playerApath);
+#else
 				scores += BFS_search2(self, playerA, playerApath);
-
-
+#endif
 			}
 			scores /= 7;
 			scores -= distA;

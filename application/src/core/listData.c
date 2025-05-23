@@ -83,7 +83,6 @@ int ListData_popLast(ListData* list, QuoridorData* outData)
     NodeData* current = list->head;
     NodeData* prev = NULL;
 
-    // CORRECTION: Itérer jusqu'au dernier élément
     while (current->next != NULL) {
         prev = current;
         current = current->next;
@@ -150,9 +149,9 @@ QuoridorData ListData_popFirst(ListData* list)
 }
 void ListData_debug(ListData* list, const char* name)
 {
-    printf("DEBUG: Liste %s:\n", name);
+    printf("debug:Liste %s:\n", name);
     if (list == NULL || list->head == NULL) {
-        printf("  Liste vide\n");
+        printf("  liste vide\n");
         return;
     }
 
@@ -160,7 +159,7 @@ void ListData_debug(ListData* list, const char* name)
     int count = 0;
     while (current != NULL && count < 5)
     { // Afficher seulement les 5 premiers
-        printf("  [%d] Action=%d, Dest=(%d,%d), Origin=(%d,%d)\n",
+        printf("  [%d] actioon=%d, dest=(%d,%d), origine=(%d,%d)\n",
             count, current->data.action,
             current->data.destPos.i, current->data.destPos.j,
             current->data.originPos.i, current->data.originPos.j);

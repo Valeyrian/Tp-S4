@@ -17,7 +17,7 @@
 #define RAND_VALUE 0.25
 #define ALL_WALLS 
 #define MAX_CANDIDATES 500
-//#define A_STAR
+
 
   
   

@@ -30,3 +30,11 @@
 #define HD_HEIGHT 720
 #define FHD_WIDTH 1920
 #define FHD_HEIGHT 1080
+
+// ---------------------------------------------------------------------------
+
+/// Permet ou non l'utilisation de l'algorithme A. Permet 
+
+//#define A_STAR
+
+// ---------------------------------------------------------------------------

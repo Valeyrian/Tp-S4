@@ -5,7 +5,7 @@
 #include "core/quoridor_core.h"
 #include "settings.h"
 
-#define MAX_BACK_ANALYS 100 //nombre de coups retenus par joueurs 
+#define MAX_BACK_ANALYS 250 //nombre de coups retenus par joueurs 
 
 typedef struct QuoridorData
 {

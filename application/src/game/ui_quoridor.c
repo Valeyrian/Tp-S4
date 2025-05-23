@@ -153,7 +153,6 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
                     {
                         endTime = clock();
 
-                        // CORRECTION 7: Enregistrer AVANT de poser le mur
                         QuoridorData data;
                         data.action = QUORIDOR_PLAY_HORIZONTAL_WALL;
                         data.destPos.i = i;
@@ -164,12 +163,10 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
 
                         core->startTime = clock();
 
-                        //QuoridorCore_print(core);
 
 
-                        // CORRECTION 8: Enregistrer dans la liste du BON joueur
                         AIData_add(self->m_aiData[currentPlayerBeforeMove], data);
-                        return; // Important: sortir après avoir traité le mur
+                        return; 
 
                     }
                 }
@@ -180,7 +177,6 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
 
                         core->startTime = clock();
 
-                        // CORRECTION 9: Enregistrer AVANT de poser le mur
                         QuoridorData data;
                         data.action = QUORIDOR_PLAY_VERTICAL_WALL;
                         data.destPos.i = i;
@@ -189,9 +185,8 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
 
                         QuoridorCore_playWall(core, WALL_TYPE_VERTICAL, i, j);
 
-                        // CORRECTION 10: Enregistrer dans la liste du BON joueur
                         AIData_add(self->m_aiData[currentPlayerBeforeMove], data);
-                        return; // Important: sortir après avoir traité le mur
+                        return; 
 
                     }
                 }

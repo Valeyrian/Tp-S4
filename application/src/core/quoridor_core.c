@@ -165,12 +165,12 @@ bool QuoridorCore_canPlayWall(QuoridorCore* self, WallType type, int i, int j)
 	if (type == WALL_TYPE_HORIZONTAL)
 	{
 		self->hWalls[i][j] = WALL_STATE_START;
-		self->hWalls[i][j + 1] = WALL_STATE_END; //pas sur de la necesserite
+		self->hWalls[i][j + 1] = WALL_STATE_END; 
 	}
 	else
 	{
 		self->vWalls[i][j] = WALL_STATE_START;
-		self->vWalls[i + 1][j] = WALL_STATE_END;//pas sur de la necesserite
+		self->vWalls[i + 1][j] = WALL_STATE_END;
 	}
 
 
