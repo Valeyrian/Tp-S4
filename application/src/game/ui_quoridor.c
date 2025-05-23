@@ -352,6 +352,10 @@ UIQuoridor *UIQuoridor_create(Scene *scene)
         scene, rect, font, "<-",
         g_colors.white, g_colors.cell, g_colors.selected 
     );
+    self->m_buttonCheatSwitch = UIButton_create(
+        scene, rect, font, "Preview",
+        g_colors.white, g_colors.cell, g_colors.selected 
+    );
     // Textes
     font = AssetManager_getFont(assets, FONT_NORMAL);
     self->m_textTitleInfo = Text_create(g_renderer, font, "Information", g_colors.white);
@@ -410,6 +414,7 @@ void UIQuoridor_destroy(UIQuoridor *self)
     UIButton_destroy(self->m_buttonRestart);
     UIButton_destroy(self->m_buttonBack);
 	UIButton_destroy(self->m_buttonActionBack);
+	UIButton_destroy(self->m_buttonCheatSwitch);
 
     free(self);
 }
@@ -439,7 +444,9 @@ void UIQuoridor_updatePageMain(UIQuoridor *self)
     UIButton_update(self->m_buttonSettings);
     UIButton_update(self->m_buttonRestart);
     UIButton_update(self->m_buttonActionBack);
-    
+	UIButton_update(self->m_buttonCheatSwitch);
+
+
   char buffer2[128] = { 0 };
     sprintf(buffer2, "%.2f", core->timeElapsed);
 
@@ -447,9 +454,6 @@ void UIQuoridor_updatePageMain(UIQuoridor *self)
     for(int c = 0;c<core->playerCount;c++)
         if (core->playerID == c)
             Text_setColor(self->m_textTime[0], g_colors.player[c]);
-
-
-
 
 
 
@@ -464,6 +468,10 @@ void UIQuoridor_updatePageMain(UIQuoridor *self)
     else if (UIButton_isPressed(self->m_buttonActionBack))
     {
         QuoridorCore_Undo(core, self);
+    }
+    else if (UIButton_isPressed(self->m_buttonCheatSwitch))
+    {
+		self->m_isCheatEnable = !self->m_isCheatEnable; 
     }
     else
     {
@@ -635,6 +643,7 @@ void UIQuoridor_restartQuoridor(UIQuoridor *self)
 
     
     self->m_aiTurn.action = QUORIDOR_ACTION_UNDEFINED;
+    self->m_isCheatEnable = false;
     UIQuoridor_updateRects(self);
 }
 
@@ -670,6 +679,9 @@ void UIQuoridor_updateRects(UIQuoridor *self)
 
     rect.x += roundf(rect.w + 0.2f * scale); 
 	UIButton_setRect(self->m_buttonActionBack, rect);
+    
+    rect.x += roundf(rect.w + 0.2f * scale); 
+	UIButton_setRect(self->m_buttonCheatSwitch, rect);
 
 
     const float labelRatio = 0.4f;
@@ -848,7 +860,14 @@ void UIQuoridor_renderBoard(UIQuoridor *self)
         {
             tmp = 0;
             QuoridorPos path[MAX_PATH_LEN];
-            int size = BFS_search2(core, core->playerID, path);
+            
+#ifdef A_STAR
+			int size = AStar_search(core, core->playerID, path);
+#else 
+			int size = BFS_search2(core, core->playerID, path);
+#endif
+
+
             SDL_FRect rect = self->m_rectCells[i][j];
             for (int c = 0; c < core->playerCount; c++)
             {
@@ -882,7 +901,7 @@ void UIQuoridor_renderBoard(UIQuoridor *self)
 
             }
             
-            if (tmp == 0)
+            if (tmp == 0 && self->m_isCheatEnable)
             {
                 for (int k = 0; k < size; k++)
                 {
@@ -984,6 +1003,7 @@ void UIQuoridor_renderPageMain(UIQuoridor *self)
     UIButton_render(self->m_buttonSettings);
     UIButton_render(self->m_buttonRestart);
 	UIButton_render(self->m_buttonActionBack);
+	UIButton_render(self->m_buttonCheatSwitch);
 
     // Panels
     const float blockSep = 20.f;
