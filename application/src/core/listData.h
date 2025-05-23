@@ -47,3 +47,4 @@ QuoridorData ListData_popFirst(ListData* list);
 
 
 
+void ListData_debug(ListData* list, const char* name);

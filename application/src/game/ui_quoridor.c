@@ -44,22 +44,25 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
             case 2: depth = 5; break;
             }
 
-			clock_t startTime = clock();
+            clock_t startTime = clock();
 
+            // CORRECTION 1: Enregistrer le joueur AVANT de calculer le coup
+            int currentPlayerBeforeMove = core->playerID;
+            
             self->m_aiTurn = QuoridorCore_computeTurn(core, depth, self->m_aiData[core->playerID]);
            
-            QuoridorData data; //ajouts du coups
-			data.action = self->m_aiTurn.action;
-			data.destPos.i = self->m_aiTurn.i;
+            // CORRECTION 2: Enregistrer dans la liste du bon joueur
+            QuoridorData data;
+            data.action = self->m_aiTurn.action;
+            data.destPos.i = self->m_aiTurn.i;
             data.destPos.j = self->m_aiTurn.j;
+            data.originPos = core->positions[currentPlayerBeforeMove]; // Position AVANT mouvement
 
-            data.originPos = core->positions[core->playerID]; 
-            AIData_add(self->m_aiData[core->playerID], data);
+            // CORRECTION 3: Utiliser le joueur qui était actif AVANT le coup
+            AIData_add(self->m_aiData[currentPlayerBeforeMove], data);
 
-			clock_t endTime = clock();
-
-			core->timeElapsed[core->playerID] += (float)(endTime - startTime) / CLOCKS_PER_SEC;  // temps que l'ia a mis
-
+            clock_t endTime = clock();
+            core->timeElapsed[currentPlayerBeforeMove] += (float)(endTime - startTime) / CLOCKS_PER_SEC;
         }
         else
         {
@@ -82,7 +85,7 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
             }
         }
     }
-    else
+    else 
     {
         // Tour du joueur
 
@@ -94,6 +97,9 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
         Input *input = Scene_getInput(self->m_scene);
         if (input->validatePressed == false) return;
 
+        
+        int currentPlayerBeforeMove = core->playerID;
+
         Vec2 mousePos = input->mousePos;
         for (int i = 0; i < gridSize; i++)
         {
@@ -103,23 +109,23 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
                 {
                     if (QuoridorCore_canMoveTo(core, i, j))
                     {
-						clock_t endTime = clock();  
-                        QuoridorCore_moveTo(core, i, j);
+                        endTime = clock();
 
-						core->timeElapsed[core->playerID] = (float)(endTime - startTime) / CLOCKS_PER_SEC;  
-                        //QuoridorCore_print(core);
-
-
+                        
                         QuoridorData data;
-						data.action = QUORIDOR_MOVE_TO;
-						data.destPos.i = i;
-						data.destPos.j = j;
-                        data.originPos = core->positions[core->playerID];
+                        data.action = QUORIDOR_MOVE_TO;
+                        data.destPos.i = i;
+                        data.destPos.j = j;
+                        data.originPos = core->positions[currentPlayerBeforeMove]; // Position AVANT mouvement 
 
-						AIData_add(self->m_aiData[core->playerID], data); 
+                        // Effectuer le mouvement
+                        QuoridorCore_moveTo(core, i, j);
+                        core->timeElapsed[currentPlayerBeforeMove] = (float)(endTime - startTime) / CLOCKS_PER_SEC;
 
+                        // CORRECTION 6: Enregistrer dans la liste du BON joueur
+                        AIData_add(self->m_aiData[currentPlayerBeforeMove], data);
 
-
+                        return; // Important: sortir après avoir traité le mouvement
                     }
                 }
             }
@@ -133,17 +139,21 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
                 {
                     if (QuoridorCore_canPlayWall(core, WALL_TYPE_HORIZONTAL, i, j))
                     {
-						endTime = clock(); 
-                        QuoridorCore_playWall(core, WALL_TYPE_HORIZONTAL, i, j);
-						core->timeElapsed[core->playerID] = (float)(endTime - startTime) / CLOCKS_PER_SEC; 
-                        //QuoridorCore_print(core);
+                        endTime = clock();
 
-						QuoridorData data;
-						data.action = QUORIDOR_PLAY_HORIZONTAL_WALL;
-						data.destPos.i = i;
-						data.destPos.j = j;
-                        data.originPos = core->positions[core->playerID];
-						AIData_add(self->m_aiData[core->playerID], data); 
+                        // CORRECTION 7: Enregistrer AVANT de poser le mur
+                        QuoridorData data;
+                        data.action = QUORIDOR_PLAY_HORIZONTAL_WALL;
+                        data.destPos.i = i;
+                        data.destPos.j = j;
+                        data.originPos = core->positions[currentPlayerBeforeMove];
+
+                        QuoridorCore_playWall(core, WALL_TYPE_HORIZONTAL, i, j);
+                        core->timeElapsed[currentPlayerBeforeMove] = (float)(endTime - startTime) / CLOCKS_PER_SEC;
+
+                        // CORRECTION 8: Enregistrer dans la liste du BON joueur
+                        AIData_add(self->m_aiData[currentPlayerBeforeMove], data);
+                        return; // Important: sortir après avoir traité le mur
                     }
                 }
                 if (FRect_containsPoint(&(self->m_rectMouseVWalls[i][j]), mousePos))
@@ -151,16 +161,20 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
                     if (QuoridorCore_canPlayWall(core, WALL_TYPE_VERTICAL, i, j))
                     {
                         endTime = clock();
-                        QuoridorCore_playWall(core, WALL_TYPE_VERTICAL, i, j);
-						core->timeElapsed[core->playerID] = (float)(endTime - startTime) / CLOCKS_PER_SEC;  
-                        //QuoridorCore_print(core);
 
-						QuoridorData data;   
-						data.action = QUORIDOR_PLAY_VERTICAL_WALL; 
-						data.destPos.i = i; 
-						data.destPos.j = j; 
-                        data.originPos = core->positions[core->playerID];
-						AIData_add(self->m_aiData[core->playerID], data);  
+                        // CORRECTION 9: Enregistrer AVANT de poser le mur
+                        QuoridorData data;
+                        data.action = QUORIDOR_PLAY_VERTICAL_WALL;
+                        data.destPos.i = i;
+                        data.destPos.j = j;
+                        data.originPos = core->positions[currentPlayerBeforeMove];
+
+                        QuoridorCore_playWall(core, WALL_TYPE_VERTICAL, i, j);
+                        core->timeElapsed[currentPlayerBeforeMove] = (float)(endTime - startTime) / CLOCKS_PER_SEC;
+
+                        // CORRECTION 10: Enregistrer dans la liste du BON joueur
+                        AIData_add(self->m_aiData[currentPlayerBeforeMove], data);
+                        return; // Important: sortir après avoir traité le mur
                     }
                 }
             }
@@ -951,7 +965,7 @@ void UIQuoridor_renderPageMain(UIQuoridor *self)
                 score = 0;
             if (score > 20)
                 score = 20;
-            printf("%.2f\n", score);
+            //printf("%.2f\n", score);
             SDL_FRect dstRect = { 0 };
             dstRect.x = roundf(x);
             dstRect.y = roundf(y);

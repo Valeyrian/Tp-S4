@@ -123,7 +123,7 @@ float isTheMoveWorth(int i, int j, void* aiData)
 			}
 		}
 	}
-	printf("%d , (%d,%d)\n", count, i, j);
+	//printf("%d , (%d,%d)\n", count, i, j);
 	if (count >= 2)
 	{
 		switch (count)
@@ -958,7 +958,7 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 				return distance;
 			}
 		}
-		printf("bruhh %d %d\n", self->positions[playerID].i, self->positions[playerID].j);
+		//printf("bruhh %d %d\n", self->positions[playerID].i, self->positions[playerID].j);
 		return -1; // Retourne -1 si aucun chemin n'est trouvé
 
 	}
