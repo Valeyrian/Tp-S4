@@ -46,19 +46,19 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
 
             clock_t startTime = clock();
 
-            // CORRECTION 1: Enregistrer le joueur AVANT de calculer le coup
+           
             int currentPlayerBeforeMove = core->playerID;
             
             self->m_aiTurn = QuoridorCore_computeTurn(core, depth, self->m_aiData[core->playerID]);
            
-            // CORRECTION 2: Enregistrer dans la liste du bon joueur
+            
             QuoridorData data;
             data.action = self->m_aiTurn.action;
             data.destPos.i = self->m_aiTurn.i;
             data.destPos.j = self->m_aiTurn.j;
-            data.originPos = core->positions[currentPlayerBeforeMove]; // Position AVANT mouvement
+            data.originPos = core->positions[currentPlayerBeforeMove]; 
 
-            // CORRECTION 3: Utiliser le joueur qui était actif AVANT le coup
+           
             AIData_add(self->m_aiData[currentPlayerBeforeMove], data);
 
             clock_t endTime = clock();
@@ -116,16 +116,16 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
                         data.action = QUORIDOR_MOVE_TO;
                         data.destPos.i = i;
                         data.destPos.j = j;
-                        data.originPos = core->positions[currentPlayerBeforeMove]; // Position AVANT mouvement 
+                        data.originPos = core->positions[currentPlayerBeforeMove]; // Position avt mvt 
 
-                        // Effectuer le mouvement
+                        
                         QuoridorCore_moveTo(core, i, j);
                         core->timeElapsed[currentPlayerBeforeMove] = (float)(endTime - startTime) / CLOCKS_PER_SEC;
 
-                        // CORRECTION 6: Enregistrer dans la liste du BON joueur
+                        
                         AIData_add(self->m_aiData[currentPlayerBeforeMove], data);
 
-                        return; // Important: sortir après avoir traité le mouvement
+                        return; 
                     }
                 }
             }

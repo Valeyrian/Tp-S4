@@ -158,7 +158,8 @@ void ListData_debug(ListData* list, const char* name)
 
     NodeData* current = list->head;
     int count = 0;
-    while (current != NULL && count < 5) { // Afficher seulement les 5 premiers
+    while (current != NULL && count < 5)
+    { // Afficher seulement les 5 premiers
         printf("  [%d] Action=%d, Dest=(%d,%d), Origin=(%d,%d)\n",
             count, current->data.action,
             current->data.destPos.i, current->data.destPos.j,
