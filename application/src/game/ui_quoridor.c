@@ -22,12 +22,16 @@ static bool UIQuoridor_isPlayerTurn(UIQuoridor *self)
 
 void UIQuoridor_updateTurn(UIQuoridor *self)
 {
+
     assert(self && "The UIQuoridor must be created");
 
     QuoridorCore *core = Scene_getQuoridorCore(self->m_scene);
     if (core->state != QUORIDOR_STATE_IN_PROGRESS) return;
 
     bool playerTurn = UIQuoridor_isPlayerTurn(self);
+    clock_t endTime = clock();
+
+    core->timeElapsed = (float)(endTime - core->startTime) / CLOCKS_PER_SEC;
 
     if (playerTurn == false)
     {
@@ -44,17 +48,16 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
             case 2: depth = 5; break;
             }
 
-			clock_t startTime = clock();
 
             self->m_aiTurn = QuoridorCore_computeTurn(core, depth, self->m_aiData[core->playerID]);
 
-			clock_t endTime = clock();
 
-			core->timeElapsed[core->playerID] += (float)(endTime - startTime) / CLOCKS_PER_SEC;  // temps que l'ia a mis
 
         }
         else
         {
+            core->startTime = clock();
+
             self->m_aiAccu += Timer_getDeltaMS(g_time);
             Uint64 minTime = 0;
             switch (UIList_getSelected(self->m_listCPUTime))
@@ -78,7 +81,6 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
     {
         // Tour du joueur
 
-		clock_t startTime = clock();
         clock_t endTime;
 
 
@@ -95,10 +97,10 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
                 {
                     if (QuoridorCore_canMoveTo(core, i, j))
                     {
-						clock_t endTime = clock();  
                         QuoridorCore_moveTo(core, i, j);
 
-						core->timeElapsed[core->playerID] = (float)(endTime - startTime) / CLOCKS_PER_SEC;  
+                        core->startTime = clock();
+
                         //QuoridorCore_print(core);
 
                     }
@@ -116,7 +118,8 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
                     {
 						endTime = clock(); 
                         QuoridorCore_playWall(core, WALL_TYPE_HORIZONTAL, i, j);
-						core->timeElapsed[core->playerID] = (float)(endTime - startTime) / CLOCKS_PER_SEC; 
+                        core->startTime = clock();
+
                         //QuoridorCore_print(core);
                     }
                 }
@@ -124,9 +127,10 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
                 {
                     if (QuoridorCore_canPlayWall(core, WALL_TYPE_VERTICAL, i, j))
                     {
-                        endTime = clock();
                         QuoridorCore_playWall(core, WALL_TYPE_VERTICAL, i, j);
-						core->timeElapsed[core->playerID] = (float)(endTime - startTime) / CLOCKS_PER_SEC;  
+
+                        core->startTime = clock();
+
                         //QuoridorCore_print(core);
                     }
                 }
@@ -176,12 +180,9 @@ static float UIQuoridor_renderPanel(
     {
         texture = Text_getTexture(columns[i]);
         Text_getSize(columns[i], &textW, &textH);
-        dstRect.x = roundf(x + hPadding + i * 0.5f * (w - 2 * hPadding));
+        dstRect.x = roundf(x + hPadding + i * (1.f/ columnCount) * (w - 2 * hPadding));
 
-#ifdef FOURPLAYERS
-        dstRect.x = roundf(x + hPadding + i * 0.25f * (w - 2 * hPadding));
 
-#endif 
 
         dstRect.y = roundf(y);
         dstRect.w = textW;
@@ -203,7 +204,8 @@ UIQuoridor *UIQuoridor_create(Scene *scene)
     self->m_aiTurn.action = QUORIDOR_ACTION_UNDEFINED;
 
     QuoridorCore *core = Scene_getQuoridorCore(scene);
-    for (int i = 0; i < 2; i++)
+    core->playerCount = 2;
+    for (int i = 0; i < 8; i++)
     {
         self->m_aiData[i] = AIData_create(core);
     }
@@ -262,6 +264,15 @@ UIQuoridor *UIQuoridor_create(Scene *scene)
     );
     UIList_setSelected(self->m_listRandStart, 0);
 
+
+    const char* playerValues[] = { "2", "4", "8"};
+    self->m_listPlayerCount = UIList_create(
+        scene, rect, 0.5f, font,
+        "PLayers count", playerValues, sizeof(playerValues) / sizeof(char*),
+        g_colors.white, g_colors.cell, g_colors.selected
+    );
+    UIList_setSelected(self->m_listPlayerCount, 0);
+    
     // Boutons
     self->m_buttonSettings = UIButton_create(
         scene, rect, font, "Settings",
@@ -281,26 +292,22 @@ UIQuoridor *UIQuoridor_create(Scene *scene)
     self->m_textTitleInfo = Text_create(g_renderer, font, "Information", g_colors.white);
     self->m_textTitleWalls = Text_create(g_renderer, font, "Walls", g_colors.white);
     self->m_textTitleDistances = Text_create(g_renderer, font, "Distances", g_colors.white);
+    self->m_textTime[0] = Text_create(g_renderer, font, "0.00", g_colors.white);
+    self->m_textTitleTime = Text_create(g_renderer, font, "Time", g_colors.white);
 
     font = AssetManager_getFont(assets, FONT_BIG);
-    self->m_textTitleSettings = Text_create(g_renderer, font, "Settings", g_colors.player0);
-    self->m_textInfo = Text_create(g_renderer, font, "P1 turn", g_colors.player0);
-    self->m_textWalls[0] = Text_create(g_renderer, font, "10", g_colors.player0);
-    self->m_textWalls[1] = Text_create(g_renderer, font, "10", g_colors.player1);
-#ifdef FOURPLAYERS
-    self->m_textWalls[2] = Text_create(g_renderer, font, "10", g_colors.player2);
-    self->m_textWalls[3] = Text_create(g_renderer, font, "10", g_colors.player3);
-#endif 
+    self->m_textTitleSettings = Text_create(g_renderer, font, "Settings", g_colors.player[0]);
+    self->m_textInfo = Text_create(g_renderer, font, "P1 turn", g_colors.player[0]);
+    self->m_textWalls[0] = Text_create(g_renderer, font, "10", g_colors.player[0]);
+
+    for (int c = 0; c < 8; c++)
+    {
+        self->m_textWalls[c] = Text_create(g_renderer, font, "10", g_colors.player[c]);
+        self->m_textDistances[c] = Text_create(g_renderer, font, "10", g_colors.player[c]);
+    }
 
 
-    self->m_textDistances[0] = Text_create(g_renderer, font, "10", g_colors.player0);
-    self->m_textDistances[1] = Text_create(g_renderer, font, "10", g_colors.player1);
-#ifdef FOURPLAYERS
 
-    self->m_textDistances[2] = Text_create(g_renderer, font, "10", g_colors.player2);
-    self->m_textDistances[3] = Text_create(g_renderer, font, "10", g_colors.player3);
-
-#endif
 
     // Calcule les positions des rectangles/boutons/listes
     UIQuoridor_updateRects(self);
@@ -312,28 +319,19 @@ void UIQuoridor_destroy(UIQuoridor *self)
 {
     if (!self) return;
 
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < 8; i++)
     {
         AIData_destroy(self->m_aiData[i]);
+        Text_destroy(self->m_textWalls[i]);
+        Text_destroy(self->m_textDistances[i]);
     }
 
     Text_destroy(self->m_textTitleInfo);
     Text_destroy(self->m_textTitleWalls);
     Text_destroy(self->m_textTitleDistances);
     Text_destroy(self->m_textTitleSettings);
-    Text_destroy(self->m_textWalls[0]);
-    Text_destroy(self->m_textWalls[1]);
-#ifdef FOURPLAYERS
-    Text_destroy(self->m_textWalls[2]);
-    Text_destroy(self->m_textWalls[3]);
-#endif
-    Text_destroy(self->m_textDistances[0]);
-    Text_destroy(self->m_textDistances[1]);
-#ifdef FOURPLAYERS
 
-    Text_destroy(self->m_textDistances[2]);
-    Text_destroy(self->m_textDistances[3]);
-#endif
+
     Text_destroy(self->m_textInfo);
 
     UIList_destroy(self->m_listMode);
@@ -374,6 +372,16 @@ void UIQuoridor_updatePageMain(UIQuoridor *self)
 
     UIButton_update(self->m_buttonSettings);
     UIButton_update(self->m_buttonRestart);
+    char buffer2[128] = { 0 };
+    sprintf(buffer2, "%.2f", core->timeElapsed);
+
+    Text_setString(self->m_textTime[0], buffer2);
+    for(int c = 0;c<core->playerCount;c++)
+        if (core->playerID == c)
+            Text_setColor(self->m_textTime[0], g_colors.player[c]);
+
+
+
 
     if (UIButton_isPressed(self->m_buttonSettings))
     {
@@ -389,11 +397,8 @@ void UIQuoridor_updatePageMain(UIQuoridor *self)
     }
 
     char buffer[128] = { 0 };
-    int tmp = 2;
-#ifdef FOURPLAYERS
-    tmp = 4;
-#endif
-    for (int i = 0; i < tmp; i++)
+
+    for (int i = 0; i < core->playerCount; i++)
     {
         sprintf(buffer, "%d", core->wallCounts[i]);
         Text_setString(self->m_textWalls[i], buffer);
@@ -421,43 +426,54 @@ void UIQuoridor_updatePageMain(UIQuoridor *self)
             sprintf(buffer, "CPU %d turn", core->playerID + 1);
 
         Text_setString(self->m_textInfo, buffer);
-        if(core->playerID == 0)
-            Text_setColor(self->m_textInfo, g_colors.player0);
-        if (core->playerID == 1)
-            Text_setColor(self->m_textInfo, g_colors.player1);
-#ifdef FOURPLAYERS
+        for (int c = 0; c < core->playerCount; c++)
+            if (core->playerID == c)
+                Text_setColor(self->m_textInfo, g_colors.player[c]);
 
-        if (core->playerID == 2)
-            Text_setColor(self->m_textInfo, g_colors.player2);
-        if (core->playerID == 3)
-            Text_setColor(self->m_textInfo, g_colors.player3);
-#endif
     }
     else
     {
         if (core->state == QUORIDOR_STATE_P0_WON)
         {
             Text_setString(self->m_textInfo, playerTurn ? "Player 1 WON" : "CPU 1 WON");
-            Text_setColor(self->m_textInfo, g_colors.player0);
+            Text_setColor(self->m_textInfo, g_colors.player[0]);
         }
         else if (core->state == QUORIDOR_STATE_P1_WON)
         {
             Text_setString(self->m_textInfo, playerTurn ? "Player 2 WON" : "CPU 2 WON");
-            Text_setColor(self->m_textInfo, g_colors.player1);
+            Text_setColor(self->m_textInfo, g_colors.player[1]);
         }
-#ifdef FOURPLAYERS
 
         else if (core->state == QUORIDOR_STATE_P2_WON)
         {
             Text_setString(self->m_textInfo, playerTurn ? "Player 3 WON" : "CPU 3 WON");
-            Text_setColor(self->m_textInfo, g_colors.player2);
+            Text_setColor(self->m_textInfo, g_colors.player[2]);
         }
         else if (core->state == QUORIDOR_STATE_P3_WON)
         {
             Text_setString(self->m_textInfo, playerTurn ? "Player 4 WON" : "CPU 4 WON");
-            Text_setColor(self->m_textInfo, g_colors.player3);
+            Text_setColor(self->m_textInfo, g_colors.player[3]);
         }
-#endif
+        else if (core->state == QUORIDOR_STATE_P4_WON)
+        {
+            Text_setString(self->m_textInfo, playerTurn ? "Player 5 WON" : "CPU 5 WON");
+            Text_setColor(self->m_textInfo, g_colors.player[3]);
+        }
+        else if (core->state == QUORIDOR_STATE_P5_WON)
+        {
+            Text_setString(self->m_textInfo, playerTurn ? "Player 6 WON" : "CPU 6 WON");
+            Text_setColor(self->m_textInfo, g_colors.player[3]);
+        }
+        else if (core->state == QUORIDOR_STATE_P6_WON)
+        {
+            Text_setString(self->m_textInfo, playerTurn ? "Player 7 WON" : "CPU 7 WON");
+            Text_setColor(self->m_textInfo, g_colors.player[3]);
+        }
+        else if (core->state == QUORIDOR_STATE_P7_WON)
+        {
+            Text_setString(self->m_textInfo, playerTurn ? "Player 8 WON" : "CPU 8 WON");
+            Text_setColor(self->m_textInfo, g_colors.player[3]);
+        }
     }
 }
 
@@ -473,6 +489,7 @@ void UIQuoridor_updatePageSettings(UIQuoridor *self)
     UIList_update(self->m_listGridSize);
     UIList_update(self->m_listWallCount);
     UIList_update(self->m_listRandStart);
+    UIList_update(self->m_listPlayerCount);
 
     if (UIButton_isPressed(self->m_buttonBack))
     {
@@ -506,8 +523,22 @@ void UIQuoridor_restartQuoridor(UIQuoridor *self)
     case 1: gridSize = 7; break;
     case 2: gridSize = 9; break;
     }
+    switch (UIList_getSelected(self->m_listPlayerCount))
+    {
+    default:
+    case 0: core->playerCount = 2; break;
+    case 1: core->playerCount = 4; break;
+    case 2: core->playerCount = 8; break;
 
-    QuoridorCore_reset(core, gridSize, wallCount, 0);
+    }
+    int tmp = 0;
+    if (core->playerCount == 8)
+    {
+        gridSize = 17;
+        tmp = 1;
+    }
+
+    QuoridorCore_reset(core, gridSize, wallCount, 0,tmp);
     if (UIList_getSelected(self->m_listRandStart) == 1)
     {
         QuoridorCore_randomStart(core);
@@ -518,6 +549,17 @@ void UIQuoridor_restartQuoridor(UIQuoridor *self)
         AIData_reset(self->m_aiData[i]);
     }
 
+    switch (UIList_getSelected(self->m_listPlayerCount))
+    {
+    default:
+    case 0: core->playerCount = 2; break;
+    case 1: core->playerCount = 4; break;
+    case 2: core->playerCount = 8; break;
+
+    }
+
+
+    
     self->m_aiTurn.action = QUORIDOR_ACTION_UNDEFINED;
     UIQuoridor_updateRects(self);
 }
@@ -564,6 +606,7 @@ void UIQuoridor_updateRects(UIQuoridor *self)
         self->m_listGridSize,
         self->m_listWallCount,
         self->m_listRandStart,
+        self->m_listPlayerCount,
     };
     const int listCount = sizeof(lists) / sizeof(lists[0]);
     const float settingsH = (float)Text_getHeight(self->m_textTitleSettings)
@@ -593,11 +636,13 @@ void UIQuoridor_updateRects(UIQuoridor *self)
     };
     const float worldRectW = worldRect.upper.x - worldRect.lower.x;
     const float worldRectH = worldRect.upper.y - worldRect.lower.y;
+    float wallSize = 0.03f;
+    if(core->playerCount == 8)
+        wallSize = 0.03f / 2;
 
-    const float wallSize = 0.03f;
     float cellSize = (1.f - (gridSize - 1) * wallSize) / gridSize;
     float blockSize = cellSize + wallSize;
-
+        
     for (int i = 0; i < gridSize; i++)
     {
         for (int j = 0; j < gridSize; j++)
@@ -656,93 +701,98 @@ void UIQuoridor_renderBoard(UIQuoridor *self)
     {
         for (int j = 0; j < gridSize; j++)
         {
-            if ((core->state == QUORIDOR_STATE_P0_WON && j == gridSize - 1) || (core->state == QUORIDOR_STATE_P1_WON && j == 0))
+            if(core->playerCount != 8)
+                if ((core->state == QUORIDOR_STATE_P0_WON && j == gridSize - 1) || (core->state == QUORIDOR_STATE_P1_WON && j == 0) || (core->state == QUORIDOR_STATE_P2_WON && i == gridSize - 1) || (core->state == QUORIDOR_STATE_P3_WON && i == 0) || (core->state == QUORIDOR_STATE_P4_WON && i == gridSize - 1) || (core->state == QUORIDOR_STATE_P5_WON && i == 0) || (core->state == QUORIDOR_STATE_P6_WON && i == 0) || (core->state == QUORIDOR_STATE_P7_WON && i == 0))
+                {
+                    SDL_FRect* square = &self->m_rectCells[i][j];
+                    square->x -= square->h / 5;
+                    square->y -= square->w / 5;
+                    square->h += square->h / 5;
+                    square->w += square->w / 5;
+                }
+            if((i >= 5 && i <= gridSize - 6) || (j >= 5 && j <= gridSize - 6) || core->playerCount != 8)
             {
-                SDL_FRect* square = &self->m_rectCells[i][j];
-                square->x -= square->h / 5;
-                square->y -= square->w / 5;
-                square->h += square->h / 5;
-                square->w += square->w / 5;
+                Game_setRenderDrawColor(g_colors.cell, 255);
+                SDL_RenderFillRect(g_renderer, &(self->m_rectCells[i][j]));
             }
-#ifdef FOURPLAYERS
-            if ((core->state == QUORIDOR_STATE_P2_WON && i == gridSize - 1) || (core->state == QUORIDOR_STATE_P3_WON && i == 0))
+            if (core->playerCount == 8)
             {
-                SDL_FRect* square = &self->m_rectCells[i][j];
-                square->x -= square->h / 5;
-                square->y -= square->w / 5;
-                square->h += square->h / 5;
-                square->w += square->w / 5;
-            }
-#endif // FOURPLAYERS
+                Game_setRenderDrawColor(g_colors.back, 70);
 
-            Game_setRenderDrawColor(g_colors.cell, 255);
-            SDL_RenderFillRect(g_renderer, &(self->m_rectCells[i][j]));
+                if (i == 5 && j < 5)
+                    Game_setRenderDrawColor(g_colors.player[0], 70);
+                if (i == 5 && j > gridSize - 6)
+                    Game_setRenderDrawColor(g_colors.player[5], 70);
+                if (i == 11 && j < 5)
+                    Game_setRenderDrawColor(g_colors.player[1], 70);
+                if (i == 11 && j > gridSize - 6)
+                    Game_setRenderDrawColor(g_colors.player[4], 70);
+                if (j == 5 && i < 5)
+                    Game_setRenderDrawColor(g_colors.player[7], 70);
+                if (j == 5 && i > gridSize - 6)
+                    Game_setRenderDrawColor(g_colors.player[2], 70);
+                if (j == 11 && i < 5)
+                    Game_setRenderDrawColor(g_colors.player[6], 70);
+                if (j == 11 && i > gridSize - 6)
+                    Game_setRenderDrawColor(g_colors.player[3], 70);
+                SDL_RenderFillRect(g_renderer, &(self->m_rectCells[i][j]));
+
+
+                
+            }
+        }
+        if(core->playerCount != 8)
+        {
+            Game_setRenderDrawColor(g_colors.player[1], 50);
+            SDL_RenderFillRect(g_renderer, &(self->m_rectCells[i][0]));
+
+            Game_setRenderDrawColor(g_colors.player[0], 60);
+            SDL_RenderFillRect(g_renderer, &(self->m_rectCells[i][gridSize - 1]));
         }
 
-        Game_setRenderDrawColor(g_colors.player1, 50);
-        SDL_RenderFillRect(g_renderer, &(self->m_rectCells[i][0]));
-
-        Game_setRenderDrawColor(g_colors.player0, 60);
-        SDL_RenderFillRect(g_renderer, &(self->m_rectCells[i][gridSize - 1]));
-
 
     }
-#ifdef FOURPLAYERS
-
-    for (int i = 0; i < gridSize; i++)
-    {
+    if(core->playerCount == 4)
+        for (int i = 0; i < gridSize; i++)
+        {
             
-        Game_setRenderDrawColor(g_colors.player2, 50);
-        SDL_RenderFillRect(g_renderer, &(self->m_rectCells[gridSize - 1][i]));
-        Game_setRenderDrawColor(g_colors.player3, 50);
-        SDL_RenderFillRect(g_renderer, &(self->m_rectCells[0][i]));
+            Game_setRenderDrawColor(g_colors.player[2], 50);
+            SDL_RenderFillRect(g_renderer, &(self->m_rectCells[gridSize - 1][i]));
+            Game_setRenderDrawColor(g_colors.player[3], 50);
+            SDL_RenderFillRect(g_renderer, &(self->m_rectCells[0][i]));
 
-    }
-#endif
+        }
+
+    int tmp = 0;
     for (int i = 0; i < gridSize; i++)
     {
         for (int j = 0; j < gridSize; j++)
         {
+            tmp = 0;
             QuoridorPos path[MAX_PATH_LEN];
             int size = BFS_search2(core, core->playerID, path);
             SDL_FRect rect = self->m_rectCells[i][j];
-            if (i == core->positions[0].i && j == core->positions[0].j)
+            for (int c = 0; c < core->playerCount; c++)
             {
-                Game_setRenderDrawColor(g_colors.player0, 255);
-                SDL_RenderFillRect(g_renderer, &rect);
+                if (i == core->positions[c].i && j == core->positions[c].j && tmp == 0)
+                {
+                    Game_setRenderDrawColor(g_colors.player[c], 255);
+                    SDL_RenderFillRect(g_renderer, &rect);
+                    tmp = 1;
+                    break;
+                }
             }
-            else if (i == core->positions[1].i && j == core->positions[1].j)
+            if (QuoridorCore_canMoveTo(core, i, j) && tmp == 0)
             {
-                Game_setRenderDrawColor(g_colors.player1, 255);
-                SDL_RenderFillRect(g_renderer, &rect);
-            }
-#ifdef FOURPLAYERS
 
-            else if (i == core->positions[2].i && j == core->positions[2].j)
-            {
-                Game_setRenderDrawColor(g_colors.player2, 255);
-                SDL_RenderFillRect(g_renderer, &rect);
-            }
-            else if (i == core->positions[3].i && j == core->positions[3].j)
-            {
-                Game_setRenderDrawColor(g_colors.player3, 255);
-                SDL_RenderFillRect(g_renderer, &rect);
-            }
-#endif
+                for (int c = 0; c < core->playerCount; c++)
+                    if (core->playerID == c && tmp == 0)
+                    {
+                        Game_setRenderDrawColor(g_colors.player[c], 128);
+                        tmp = 1;
+                    }
+                tmp = 1;
 
-            else if (QuoridorCore_canMoveTo(core, i, j))
-            {
-                if (core->playerID == 0)
-                    Game_setRenderDrawColor(g_colors.player0, 128);
-                if (core->playerID == 1)
-                    Game_setRenderDrawColor(g_colors.player1, 128);
-#ifdef FOURPLAYERS
-
-                if (core->playerID == 2)
-                    Game_setRenderDrawColor(g_colors.player2, 128);
-                if (core->playerID == 3)
-                    Game_setRenderDrawColor(g_colors.player3, 128);
-#endif
                 rect.x += rect.w / 3; rect.y += rect.h / 3; rect.w /= 3; rect.h /= 3;
 
                 if (path[1].i == i && path[1].j == j)
@@ -751,27 +801,18 @@ void UIQuoridor_renderBoard(UIQuoridor *self)
                     rect.w *= 2; rect.h *= 2;
                 }
                 SDL_RenderFillRect(g_renderer, &rect);
+
             }
-           
-            else
+            
+            if (tmp == 0)
             {
                 for (int k = 0; k < size; k++)
                 {
                     if (path[k].i == i && path[k].j == j)
                     {
-                        if (core->playerID == 0)
-                            Game_setRenderDrawColor(g_colors.player0, 45);
-                        if (core->playerID == 1)
-                            Game_setRenderDrawColor(g_colors.player1, 45);
-#ifdef FOURPLAYERS
-
-                        if (core->playerID == 2)
-                            Game_setRenderDrawColor(g_colors.player2, 45);
-                        if (core->playerID == 3)
-                            Game_setRenderDrawColor(g_colors.player3, 45);
-#endif
-
-
+                        for (int c = 0; c < core->playerCount; c++)
+                            if (core->playerID == c)
+                                Game_setRenderDrawColor(g_colors.player[c], 45);
                         rect.x += rect.w / 3; rect.y += rect.h / 3; rect.w /= 3; rect.h /= 3;
                         rect.x -= rect.w / 2; rect.y -= rect.h / 2;
                         rect.w *= 2; rect.h *= 2;
@@ -779,8 +820,10 @@ void UIQuoridor_renderBoard(UIQuoridor *self)
                     }
                 }
             }
-                
-           
+
+
+            
+            
 
         }
     }
@@ -869,10 +912,7 @@ void UIQuoridor_renderPageMain(UIQuoridor *self)
     float y = self->m_rectMainPanels.y + blockSep;
 
     const float panelWidth = self->m_rectMainPanels.w;
-    int tmp = 2;
-#ifdef FOURPLAYERS
-    tmp = 4;
-#endif
+    int tmp = core->playerCount;
     if (self->m_inSettings == false)
     {
         y = UIQuoridor_renderPanel(
@@ -897,37 +937,41 @@ void UIQuoridor_renderPageMain(UIQuoridor *self)
             self->m_textDistances, tmp
         );
         y += blockSep;
-        for (int p = 0; p < tmp; p++)
+
+        y = UIQuoridor_renderPanel(
+            self, x, y, panelWidth,
+            self->m_textTitleTime,
+            self->m_textTime, 1
+        );
+
+        y += blockSep;
+        for (int p = 0; p < core->playerCount; p++)
         {
             float score = QuoridorCore_scoreNoRand(core, p) + 10;
             if (score < 0)
                 score = 0;
             if (score > 20)
                 score = 20;
-            printf("%.2f\n", score);
             SDL_FRect dstRect = { 0 };
             dstRect.x = roundf(x);
             dstRect.y = roundf(y);
             dstRect.w = roundf(panelWidth);
-            dstRect.h = roundf(50);
+            dstRect.h = roundf(30);
             Game_setRenderDrawColor(g_colors.cell, 255);
             SDL_RenderFillRect(g_renderer, &dstRect);
             dstRect.x = roundf(x + 4);
             dstRect.y = roundf(y + 4);
             dstRect.w = roundf((panelWidth - 8) / 20 * (score));
-            dstRect.h = roundf(42);
-            if (p == 0)
-                Game_setRenderDrawColor(g_colors.player0, 255);
-            if (p == 1)
-                Game_setRenderDrawColor(g_colors.player1, 255);
-            if (p == 2)
-                Game_setRenderDrawColor(g_colors.player2, 255);
-            if (p == 3)
-                Game_setRenderDrawColor(g_colors.player3, 255);
+            dstRect.h = roundf(22);
+            for (int c = 0; c < core->playerCount; c++)
+                if (p == c)
+                    Game_setRenderDrawColor(g_colors.player[c], 255);
+
             SDL_RenderFillRect(g_renderer, &dstRect);
-            y += blockSep + 50;
+            y += blockSep + 30;
 
         }
+
 
     }
 }
@@ -943,6 +987,7 @@ void UIQuoridor_renderPageSettings(UIQuoridor *self)
     UIList_render(self->m_listGridSize);
     UIList_render(self->m_listWallCount);
     UIList_render(self->m_listRandStart);
+    UIList_render(self->m_listPlayerCount);
 
     SDL_Texture *texture = Text_getTexture(self->m_textTitleSettings);
     SDL_RenderTexture(g_renderer, texture, NULL, &(self->m_rectSettings));

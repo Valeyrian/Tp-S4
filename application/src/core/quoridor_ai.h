@@ -18,18 +18,8 @@
 #define RAND_VALUE 0.25
 #define ALL_WALLS 
 #define MAX_CANDIDATES 500
-#define A_STAR
+//#define A_STAR
 
-#define FOURPLAYERS
-
-
-
-#ifdef FOURPLAYERS // 4 joueurs
-    #define DEPTH_MAX 2
-#endif 
-#ifndef FOURPLAYERS // 2 joueurs
-    #define DEPTH_MAX 4
-#endif 
   
   
 

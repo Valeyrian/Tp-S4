@@ -19,7 +19,7 @@ QuoridorCore *QuoridorCore_create()
 
 
 
-    QuoridorCore_reset(self, 9, 10, 0);
+    QuoridorCore_reset(self, 9, 10, 0,0);
 
 
 
@@ -34,33 +34,76 @@ void QuoridorCore_destroy(QuoridorCore *self)
     free(self);
 }
 
-void QuoridorCore_reset(QuoridorCore *self, int gridSize, int wallCount, int firstPlayer)
+void QuoridorCore_reset(QuoridorCore *self, int gridSize, int wallCount, int firstPlayer, int isHeight)
 {
     memset(self, 0, sizeof(QuoridorCore));
-
     self->gridSize = gridSize;
     self->playerID = firstPlayer;
-
-    self->positions[0].i = gridSize / 2;
-    self->positions[0].j = 0;
-
-    self->positions[1].i = gridSize / 2;
-    self->positions[1].j = gridSize - 1;
-#ifdef FOURPLAYERS
-    self->positions[2].i = 0;
-    self->positions[2].j = gridSize / 2;
-
-    self->positions[3].i = gridSize - 1;
-    self->positions[3].j = gridSize / 2;
-#endif // FOURPLAYERS
+    if(!isHeight)
+    {
 
 
-    self->wallCounts[0] = wallCount;
-    self->wallCounts[1] = wallCount;
-#ifdef FOURPLAYERS
-    self->wallCounts[2] = wallCount;
-    self->wallCounts[3] = wallCount;
-#endif // FOURPLAYERS
+        self->positions[0].i = gridSize / 2;
+        self->positions[0].j = 0;
+
+        self->positions[1].i = gridSize / 2;
+        self->positions[1].j = gridSize - 1;
+        self->positions[2].i = 0;
+        self->positions[2].j = gridSize / 2;
+
+        self->positions[3].i = gridSize - 1;
+        self->positions[3].j = gridSize / 2;
+
+
+        self->positions[4].i = gridSize - 1;
+        self->positions[4].j = gridSize / 2 + 1;
+
+        self->positions[5].i = gridSize - 1;
+        self->positions[5].j = gridSize / 2 + 2;
+
+        self->positions[6].i = gridSize - 1;
+        self->positions[6].j = gridSize / 2 + 3;
+
+        self->positions[7].i = gridSize - 1;
+        self->positions[7].j = gridSize / 2;
+        self->playerCount = 2;
+
+    }
+    else
+    {
+        self->positions[0].i = 11;
+        self->positions[0].j = 14;
+
+        self->positions[1].i = 5;
+        self->positions[1].j = 14;
+
+        self->positions[2].i = 2;
+        self->positions[2].j = 11;
+
+        self->positions[3].i = 2;
+        self->positions[3].j = 5;
+
+
+        self->positions[4].i = 5;
+        self->positions[4].j = 2;
+
+        self->positions[5].i = 11;
+        self->positions[5].j = 2;
+
+        self->positions[6].i = 14;
+        self->positions[6].j = 5;
+
+        self->positions[7].i = 14;
+        self->positions[7].j = 11;
+        self->playerCount = 8;
+
+    }
+    for (int c = 0; c < 8; c++)
+    {
+        self->wallCounts[c] = wallCount;
+
+    }
+
 
 
 
@@ -69,8 +112,8 @@ void QuoridorCore_reset(QuoridorCore *self, int gridSize, int wallCount, int fir
 
 void QuoridorCore_randomStart(QuoridorCore *self)
 {
-    self->wallCounts[0] += 2;
-    self->wallCounts[1] += 2;
+    for (int c = 0; c < self->playerCount; c++)
+        self->wallCounts[c] += 2;
 
     const int gridSize = self->gridSize;
 
@@ -92,12 +135,12 @@ void QuoridorCore_randomStart(QuoridorCore *self)
 
 bool QuoridorCore_canPlayWall(QuoridorCore *self, WallType type, int i, int j)
 {
+
     if (i < 0 || i >= self->gridSize - 1) return false;
     if (j < 0 || j >= self->gridSize - 1) return false;
 
 	//check si il reste des murs
 	if (self->wallCounts[self->playerID] <= 0) return false;
-
 	//check si le mur est déjà placé
 
 	if (type == WALL_TYPE_HORIZONTAL && self->hWalls[i][j] != WALL_STATE_NONE) return false;
@@ -145,21 +188,20 @@ bool QuoridorCore_canPlayWall(QuoridorCore *self, WallType type, int i, int j)
         self->vWalls[i][j] = WALL_STATE_NONE; 
         self->vWalls[i + 1][j] = WALL_STATE_NONE; 
     }
-	
     return feasible;
    
 }
 
 void QuoridorCore_updateValidMoves(QuoridorCore *self)
 {
-
     const int gridSize = self->gridSize;
     const int currI = self->positions[self->playerID].i;
     const int currJ = self->positions[self->playerID].j;
+    int max = self->playerCount - 1;
 
 
-    int otherI[4];
-    int otherJ[4];
+    int otherI[8];
+    int otherJ[8];
 
     //const int otherI2 = self->positions[self->playerID ^ 1].i;
     //const int otherJ2 = self->positions[self->playerID ^ 1].j;
@@ -174,17 +216,13 @@ void QuoridorCore_updateValidMoves(QuoridorCore *self)
 			self->isValid[i][j] = false;
 		}
     }
-    for (int tmp = 0; tmp < 3; tmp++)
+    for (int tmp = 0; tmp < max; tmp++)
     {
-        otherI[tmp] = self->positions[(self->playerID + tmp + 1) % 4].i;
-        otherJ[tmp] = self->positions[(self->playerID + tmp + 1) % 4].j;
+        otherI[tmp] = self->positions[(self->playerID + tmp + 1) % self->playerCount].i;
+        otherJ[tmp] = self->positions[(self->playerID + tmp + 1) % self->playerCount].j;
     }
 
-    int max = 1;
-#ifdef FOURPLAYERS
-    max = 3;
 
-#endif // FOURPLAYERS
 
 	//ajoute ou non des 4 cases voisines
     for (int a = 0; a < max;a++ )
@@ -192,7 +230,9 @@ void QuoridorCore_updateValidMoves(QuoridorCore *self)
         if (currI > 0 && !QuoridorCore_hasWallAbove(self, currI, currJ)) // on ajoute au dessus
         {
             if (!(currI - 1 == otherI[a] && currJ == otherJ[a]))
+            {
                 self->isValid[currI - 1][currJ] = true;
+            }
         }
         if (currI < gridSize - 1 && !QuoridorCore_hasWallBelow(self, currI, currJ)) //on ajoute en dessous
         {
@@ -337,7 +377,16 @@ void QuoridorCore_updateValidMoves(QuoridorCore *self)
             }
         }
     }
-    
+    for (int i = 0; i < MAX_GRID_SIZE; i++)
+    {
+        for (int j = 0; j < MAX_GRID_SIZE; j++)
+        {
+            if (!((i >= 5 && i <= gridSize - 6) || (j >= 5 && j <= gridSize - 6)))
+                if(self->playerCount == 8)
+                    self->isValid[i][j] = 0;
+
+        }
+    }
     
 }
 
@@ -607,6 +656,525 @@ static bool QuoridorCore_isFeasibleRec3(QuoridorCore* self, bool explored[MAX_GR
 
     return false;
 }
+static bool QuoridorCore_isFeasibleRec00(QuoridorCore* self, bool explored[MAX_GRID_SIZE][MAX_GRID_SIZE], int i, int j)
+{
+    const int gridSize = self->gridSize;
+    if (i == 5 && j < 5) return true;
+
+
+    explored[i][j] = true;
+
+    int nextI = 0;
+    int nextJ = 0;
+    //test une ligne au dessus
+    nextI = i - 1;
+    nextJ = j;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallAbove(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur au dessus ou pas deja visite
+        {
+            if (QuoridorCore_isFeasibleRec00(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une ligne en dessous
+    nextI = i + 1;
+    nextJ = j;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallBelow(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur en dessous ou pas deja visite
+        {
+            if (QuoridorCore_isFeasibleRec00(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une case a gauche
+    nextI = i;
+    nextJ = j - 1;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallLeft(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur a gauche ou pas deja visite 
+        {
+            if (QuoridorCore_isFeasibleRec00(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une case a droite
+    nextI = i;
+    nextJ = j + 1;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille 
+    {
+        if (!QuoridorCore_hasWallRight(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur a droite ou pas deja visite 
+        {
+            if (QuoridorCore_isFeasibleRec00(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    return false;
+}
+static bool QuoridorCore_isFeasibleRec01(QuoridorCore* self, bool explored[MAX_GRID_SIZE][MAX_GRID_SIZE], int i, int j)
+{
+    const int gridSize = self->gridSize;
+    if (i == 11 && j < 5) return true;
+
+
+    explored[i][j] = true;
+
+    int nextI = 0;
+    int nextJ = 0;
+
+    //test une ligne au dessus
+    nextI = i - 1;
+    nextJ = j;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallAbove(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur au dessus ou pas deja visite
+        {
+            if (QuoridorCore_isFeasibleRec01(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une ligne en dessous
+    nextI = i + 1;
+    nextJ = j;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallBelow(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur en dessous ou pas deja visite
+        {
+            if (QuoridorCore_isFeasibleRec01(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une case a gauche
+    nextI = i;
+    nextJ = j - 1;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallLeft(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur a gauche ou pas deja visite 
+        {
+            if (QuoridorCore_isFeasibleRec01(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une case a droite
+    nextI = i;
+    nextJ = j + 1;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille 
+    {
+        if (!QuoridorCore_hasWallRight(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur a droite ou pas deja visite 
+        {
+            if (QuoridorCore_isFeasibleRec01(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    return false;
+}
+static bool QuoridorCore_isFeasibleRec02(QuoridorCore* self, bool explored[MAX_GRID_SIZE][MAX_GRID_SIZE], int i, int j)
+{
+    const int gridSize = self->gridSize;
+    if (i > gridSize - 6 && j == 5) return true;
+
+
+    explored[i][j] = true;
+
+    int nextI = 0;
+    int nextJ = 0;
+
+    //test une ligne au dessus
+    nextI = i - 1;
+    nextJ = j;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallAbove(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur au dessus ou pas deja visite
+        {
+            if (QuoridorCore_isFeasibleRec02(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une ligne en dessous
+    nextI = i + 1;
+    nextJ = j;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallBelow(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur en dessous ou pas deja visite
+        {
+            if (QuoridorCore_isFeasibleRec02(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une case a gauche
+    nextI = i;
+    nextJ = j - 1;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallLeft(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur a gauche ou pas deja visite 
+        {
+            if (QuoridorCore_isFeasibleRec02(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une case a droite
+    nextI = i;
+    nextJ = j + 1;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille 
+    {
+        if (!QuoridorCore_hasWallRight(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur a droite ou pas deja visite 
+        {
+            if (QuoridorCore_isFeasibleRec02(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    return false;
+}
+static bool QuoridorCore_isFeasibleRec03(QuoridorCore* self, bool explored[MAX_GRID_SIZE][MAX_GRID_SIZE], int i, int j)
+{
+    const int gridSize = self->gridSize;
+    if (i > gridSize - 6 && j == 11) return true;
+
+
+    explored[i][j] = true;
+
+    int nextI = 0;
+    int nextJ = 0;
+
+    //test une ligne au dessus
+    nextI = i - 1;
+    nextJ = j;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallAbove(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur au dessus ou pas deja visite
+        {
+            if (QuoridorCore_isFeasibleRec03(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une ligne en dessous
+    nextI = i + 1;
+    nextJ = j;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallBelow(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur en dessous ou pas deja visite
+        {
+            if (QuoridorCore_isFeasibleRec03(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une case a gauche
+    nextI = i;
+    nextJ = j - 1;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallLeft(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur a gauche ou pas deja visite 
+        {
+            if (QuoridorCore_isFeasibleRec03(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une case a droite
+    nextI = i;
+    nextJ = j + 1;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille 
+    {
+        if (!QuoridorCore_hasWallRight(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur a droite ou pas deja visite 
+        {
+            if (QuoridorCore_isFeasibleRec03(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    return false;
+}
+static bool QuoridorCore_isFeasibleRec04(QuoridorCore* self, bool explored[MAX_GRID_SIZE][MAX_GRID_SIZE], int i, int j)
+{
+    const int gridSize = self->gridSize;
+    if (i == 11 && j > gridSize - 6) return true;
+
+
+    explored[i][j] = true;
+
+    int nextI = 0;
+    int nextJ = 0;
+
+    //test une ligne au dessus
+    nextI = i - 1;
+    nextJ = j;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallAbove(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur au dessus ou pas deja visite
+        {
+            if (QuoridorCore_isFeasibleRec04(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une ligne en dessous
+    nextI = i + 1;
+    nextJ = j;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallBelow(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur en dessous ou pas deja visite
+        {
+            if (QuoridorCore_isFeasibleRec04(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une case a gauche
+    nextI = i;
+    nextJ = j - 1;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallLeft(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur a gauche ou pas deja visite 
+        {
+            if (QuoridorCore_isFeasibleRec04(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une case a droite
+    nextI = i;
+    nextJ = j + 1;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille 
+    {
+        if (!QuoridorCore_hasWallRight(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur a droite ou pas deja visite 
+        {
+            if (QuoridorCore_isFeasibleRec04(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    return false;
+}
+static bool QuoridorCore_isFeasibleRec05(QuoridorCore* self, bool explored[MAX_GRID_SIZE][MAX_GRID_SIZE], int i, int j)
+{
+    const int gridSize = self->gridSize;
+    if (i == 5 && j > gridSize - 6) return true;
+
+
+    explored[i][j] = true;
+
+    int nextI = 0;
+    int nextJ = 0;
+
+    //test une ligne au dessus
+    nextI = i - 1;
+    nextJ = j;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallAbove(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur au dessus ou pas deja visite
+        {
+            if (QuoridorCore_isFeasibleRec05(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une ligne en dessous
+    nextI = i + 1;
+    nextJ = j;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallBelow(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur en dessous ou pas deja visite
+        {
+            if (QuoridorCore_isFeasibleRec05(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une case a gauche
+    nextI = i;
+    nextJ = j - 1;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallLeft(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur a gauche ou pas deja visite 
+        {
+            if (QuoridorCore_isFeasibleRec05(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une case a droite
+    nextI = i;
+    nextJ = j + 1;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille 
+    {
+        if (!QuoridorCore_hasWallRight(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur a droite ou pas deja visite 
+        {
+            if (QuoridorCore_isFeasibleRec05(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    return false;
+}
+static bool QuoridorCore_isFeasibleRec06(QuoridorCore* self, bool explored[MAX_GRID_SIZE][MAX_GRID_SIZE], int i, int j)
+{
+    const int gridSize = self->gridSize;
+    if (i < 5 && j == 11) return true;
+
+
+    explored[i][j] = true;
+
+    int nextI = 0;
+    int nextJ = 0;
+
+    //test une ligne au dessus
+    nextI = i - 1;
+    nextJ = j;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallAbove(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur au dessus ou pas deja visite
+        {
+            if (QuoridorCore_isFeasibleRec06(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une ligne en dessous
+    nextI = i + 1;
+    nextJ = j;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallBelow(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur en dessous ou pas deja visite
+        {
+            if (QuoridorCore_isFeasibleRec06(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une case a gauche
+    nextI = i;
+    nextJ = j - 1;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallLeft(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur a gauche ou pas deja visite 
+        {
+            if (QuoridorCore_isFeasibleRec06(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une case a droite
+    nextI = i;
+    nextJ = j + 1;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille 
+    {
+        if (!QuoridorCore_hasWallRight(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur a droite ou pas deja visite 
+        {
+            if (QuoridorCore_isFeasibleRec06(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    return false;
+}
+static bool QuoridorCore_isFeasibleRec07(QuoridorCore* self, bool explored[MAX_GRID_SIZE][MAX_GRID_SIZE], int i, int j)
+{
+    const int gridSize = self->gridSize;
+    if (i < 5 && j == 5) return true;
+
+
+    explored[i][j] = true;
+
+    int nextI = 0;
+    int nextJ = 0;
+
+    //test une ligne au dessus
+    nextI = i - 1;
+    nextJ = j;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallAbove(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur au dessus ou pas deja visite
+        {
+            if (QuoridorCore_isFeasibleRec07(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une ligne en dessous
+    nextI = i + 1;
+    nextJ = j;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallBelow(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur en dessous ou pas deja visite
+        {
+            if (QuoridorCore_isFeasibleRec07(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une case a gauche
+    nextI = i;
+    nextJ = j - 1;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille
+    {
+        if (!QuoridorCore_hasWallLeft(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur a gauche ou pas deja visite 
+        {
+            if (QuoridorCore_isFeasibleRec07(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    //test une case a droite
+    nextI = i;
+    nextJ = j + 1;
+
+    if (nextI >= 0 && nextJ >= 0 && nextI < gridSize && nextJ < gridSize) //on reste dans la grille 
+    {
+        if (!QuoridorCore_hasWallRight(self, i, j) && !explored[nextI][nextJ] && (((nextI >= 5 && nextI <= gridSize - 6) || (nextJ >= 5 && nextJ <= gridSize - 6)) || self->playerCount != 8)) //verifie si y a pas de mur a droite ou pas deja visite 
+        {
+            if (QuoridorCore_isFeasibleRec07(self, explored, nextI, nextJ))
+                return true;
+        }
+    }
+
+    return false;
+}
 
 
 
@@ -616,33 +1184,56 @@ bool QuoridorCore_isFeasible(QuoridorCore *self)
     bool explored1[MAX_GRID_SIZE][MAX_GRID_SIZE] = { 0 };
     bool explored2[MAX_GRID_SIZE][MAX_GRID_SIZE] = { 0 };
     bool explored3[MAX_GRID_SIZE][MAX_GRID_SIZE] = { 0 };
-#ifdef FOURPLAYERS
+    bool explored4[MAX_GRID_SIZE][MAX_GRID_SIZE] = { 0 };
+    bool explored5[MAX_GRID_SIZE][MAX_GRID_SIZE] = { 0 };
+    bool explored6[MAX_GRID_SIZE][MAX_GRID_SIZE] = { 0 };
+    bool explored7[MAX_GRID_SIZE][MAX_GRID_SIZE] = { 0 };
+    if(self->playerCount == 4)
     if (QuoridorCore_isFeasibleRec0(self, explored0, self->positions[0].i, self->positions[0].j)
         && QuoridorCore_isFeasibleRec1(self, explored1, self->positions[1].i, self->positions[1].j)
         && QuoridorCore_isFeasibleRec2(self, explored2, self->positions[2].i, self->positions[2].j)
         && QuoridorCore_isFeasibleRec3(self, explored3, self->positions[3].i, self->positions[3].j))
     {
+
         return true;
     }
-#endif 
-#ifndef FOURPLAYERS
 
+
+    if (self->playerCount == 2)
     if (QuoridorCore_isFeasibleRec0(self, explored0, self->positions[0].i, self->positions[0].j)
         && QuoridorCore_isFeasibleRec1(self, explored1, self->positions[1].i, self->positions[1].j))
     {
         return true;
     }
 
-#endif
+
+
+    if (self->playerCount == 8)
+    if (QuoridorCore_isFeasibleRec00(self, explored0, self->positions[0].i, self->positions[0].j)
+        && QuoridorCore_isFeasibleRec01(self, explored1, self->positions[1].i, self->positions[1].j)
+        && QuoridorCore_isFeasibleRec02(self, explored2, self->positions[2].i, self->positions[2].j)
+        && QuoridorCore_isFeasibleRec03(self, explored3, self->positions[3].i, self->positions[3].j)
+        && QuoridorCore_isFeasibleRec04(self, explored4, self->positions[3].i, self->positions[3].j)
+        && QuoridorCore_isFeasibleRec05(self, explored5, self->positions[3].i, self->positions[3].j)
+        && QuoridorCore_isFeasibleRec06(self, explored6, self->positions[3].i, self->positions[3].j)
+        && QuoridorCore_isFeasibleRec07(self, explored7, self->positions[3].i, self->positions[3].j))
+    {
+
+        return true;
+    }
+
+
     return false;
 }
 
 bool QuoridorCore_canMoveTo(QuoridorCore *self, int nextI, int nextJ)
 {
+
     const int gridSize = self->gridSize;
     if (nextI < 0 || nextI >= gridSize) return false;
     if (nextJ < 0 || nextJ >= gridSize) return false;
     if (self->state != QUORIDOR_STATE_IN_PROGRESS) return false;
+
     return self->isValid[nextI][nextJ];
 }
 
@@ -651,7 +1242,6 @@ void QuoridorCore_playWall(QuoridorCore *self, WallType type, int i, int j)
     assert(0 <= i && i < self->gridSize - 1);
     assert(0 <= j && j < self->gridSize - 1);
     assert(self->wallCounts[self->playerID] > 0);
-    
 	if (!QuoridorCore_canPlayWall(self, type, i, j)) return;
 
 	self->wallCounts[self->playerID]--; 
@@ -667,15 +1257,10 @@ void QuoridorCore_playWall(QuoridorCore *self, WallType type, int i, int j)
 		self->vWalls[i][j] = WALL_STATE_START;
 		self->vWalls[i + 1][j] = WALL_STATE_END;
 	}
-#ifdef FOURPLAYERS
-    self->playerID = (self->playerID + 1) % 4; // xor on change de joueur
 
-#endif // FOURPLAYER
-#ifndef FOURPLAYERS
-    self->playerID = (self->playerID + 1) % 2; // xor on change de joueur
+    self->playerID = (self->playerID + 1) % self->playerCount; // xor on change de joueur
 
 
-#endif
     QuoridorCore_updateValidMoves(self);
 }
 
@@ -688,37 +1273,55 @@ void QuoridorCore_moveTo(QuoridorCore *self, int i, int j)
 
 	self->positions[self->playerID].i = i;
 	self->positions[self->playerID].j = j;
+    if (self->playerCount != 8)
+    {
+        if (self->playerID == 0 && j == self->gridSize - 1) // joueur 0 a gagné   
+        {
+            self->state = QUORIDOR_STATE_P0_WON;
+        }
+        else if (self->playerID == 1 && j == 0) // joueur 1 a gagné
+        {
+            self->state = QUORIDOR_STATE_P1_WON;
+        }
+    }
 
-	if (self->playerID == 0 && j == self->gridSize - 1) // joueur 0 a gagné   
-	{
-		self->state = QUORIDOR_STATE_P0_WON; 
-	}
-	else if (self->playerID == 1 && j == 0) // joueur 1 a gagné
-	{
-		self->state = QUORIDOR_STATE_P1_WON; 
-	}
-#ifdef FOURPLAYERS
-    if (self->playerID == 3 && i == 0) // joueur 0 a gagné   
+    if(self->playerCount == 4)
     {
-        self->state = QUORIDOR_STATE_P3_WON;
+        if (self->playerID == 3 && i == 0) // joueur 0 a gagné   
+        {
+            self->state = QUORIDOR_STATE_P3_WON;
+        }
+        if (self->playerID == 2 && i == self->gridSize - 1) // joueur 0 a gagné   
+        {
+            self->state = QUORIDOR_STATE_P2_WON;
+        }
     }
-    if (self->playerID == 2 && i == self->gridSize - 1) // joueur 0 a gagné   
+    if (self->playerCount == 8)
     {
-        self->state = QUORIDOR_STATE_P2_WON;
+        if  (i == 5 && j < 5 && self->playerID == 0) 
+            self->state = QUORIDOR_STATE_P0_WON;
+        if (i == 11 && j < 5 && self->playerID == 1)
+                self->state = QUORIDOR_STATE_P1_WON;
+        if (i == 5 && j > self->gridSize - 6 && self->playerID == 5)
+                self->state = QUORIDOR_STATE_P5_WON;
+        if (i == 11 && j > self->gridSize - 6 && self->playerID == 4)
+                self->state = QUORIDOR_STATE_P4_WON;
+        if (i > self->gridSize - 6 && j == 5 && self->playerID == 2)
+                self->state = QUORIDOR_STATE_P2_WON;
+        if (i > self->gridSize - 6 && j == 11 && self->playerID == 3)
+                self->state = QUORIDOR_STATE_P3_WON;
+        if (i < 5 && j == 5 && self->playerID == 7)
+                self->state = QUORIDOR_STATE_P7_WON;
+        if (i < 5 && j == 11 && self->playerID == 6)
+                self->state = QUORIDOR_STATE_P6_WON;
     }
-#endif
+
     // TODO
     // Déplacez le pion.
     // Changez l'état de la partie si le joueur vient de gagner.
-#ifdef FOURPLAYERS
-    self->playerID = (self->playerID + 1) % 4; // xor on change de joueur
 
-#endif // FOURPLAYER
-#ifndef FOURPLAYERS
-    self->playerID = (self->playerID + 1) % 2; // xor on change de joueur
+    self->playerID = (self->playerID + 1) % self->playerCount; // xor on change de joueur
 
-
-#endif
     QuoridorCore_updateValidMoves(self);
 }
 
