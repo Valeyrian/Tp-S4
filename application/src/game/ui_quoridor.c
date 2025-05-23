@@ -887,7 +887,7 @@ void UIQuoridor_renderBoard(UIQuoridor *self)
 
                 rect.x += rect.w / 3; rect.y += rect.h / 3; rect.w /= 3; rect.h /= 3;
 
-                if (path[1].i == i && path[1].j == j)
+                if (path[1].i == i && path[1].j == j && self->m_isCheatEnable)
                 {
                     rect.x -= rect.w / 2; rect.y -= rect.h / 2;
                     rect.w *= 2; rect.h *= 2;
