@@ -1,12 +1,18 @@
 
 #pragma once 
 
-#include "core/quoridor_ai.h" // pour QuoridorPos
+//#include "core/quoridor_ai.h"
+#include "core/quoridor_core.h"
+#include "settings.h"
+
+#define MAX_BACK_ANALYS 100 //nombre de coups retenus par joueurs 
+
 typedef struct QuoridorData
 {
     /// @brief Type de mur (horizontal ou vertical).
     QuoridorAction action;
-    QuoridorPos pos;
+    QuoridorPos destPos;
+    QuoridorPos originPos;
     int score;
 } QuoridorData;
 
@@ -37,7 +43,7 @@ void ListData_insertFirst(ListData* list, QuoridorData data);
 
 int ListData_popLast(ListData* list, QuoridorData* outData);
 
-
+QuoridorData ListData_popFirst(ListData* list);  
 
 
 

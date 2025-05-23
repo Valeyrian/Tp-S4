@@ -1,7 +1,4 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include "core/quoridor_core.h"
-#include "core/quoridor_ai.h"
+
 #include "core/listData.h" // Assurez-vous de créer ce .h avec les définitions de NodeData et ListData
 
 // Crée une nouvelle liste vide
@@ -107,3 +104,45 @@ int ListData_popLast(ListData* list, QuoridorData* outData)
 }
 
 
+QuoridorData ListData_popFirst(ListData* list)
+{
+    QuoridorData empty ;
+	empty.action = 0;
+	empty.destPos.i = -1;
+	empty.destPos.j = -1;
+	empty.originPos.i = -1;
+	empty.originPos.j = -1;
+	empty.score = 0;
+    if (list == NULL || list->head == NULL)
+        return empty;
+
+    NodeData* firstNode = list->head;  
+    list->head = firstNode->next;
+
+    QuoridorData data = firstNode->data;
+
+
+    firstNode->data.action = 0; 
+	firstNode->data.destPos.i = 0; 
+	firstNode->data.destPos.j = 0; 
+	firstNode->data.originPos.i = 0; 
+	firstNode->data.originPos.j = 0; 
+	firstNode->data.score = 0;
+    firstNode->next = NULL;
+
+    if (list->head != NULL)
+    {
+        NodeData* current = list->head;
+        
+        while (current->next != NULL)
+            current = current->next;
+
+        current->next = firstNode; 
+    }
+    else
+    {
+        list->head = firstNode; 
+    }
+
+    return data;
+}

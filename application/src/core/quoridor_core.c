@@ -5,6 +5,7 @@
 */
 
 #include "core/quoridor_core.h"
+#include "game/ui_quoridor.h"
 #include "core/quoridor_ai.h" 
 
 
@@ -66,6 +67,40 @@ void QuoridorCore_reset(QuoridorCore *self, int gridSize, int wallCount, int fir
 
     QuoridorCore_updateValidMoves(self);
 }
+
+void QuoridorCore_Undo(QuoridorCore* self, UIQuoridor *uiSelf) 
+{
+	self->playerID = (self->playerID + 3) % 4;
+    
+	QuoridorData last = ListData_popFirst(uiSelf->m_aiData[self->playerID]); //on recupere le dernier coup  
+    if (last.action == 0) return;
+
+	if (last.action == QUORIDOR_PLAY_HORIZONTAL_WALL || last.action == QUORIDOR_PLAY_VERTICAL_WALL) 
+	{
+        self->wallCounts[self->playerID]++;
+        if (last.action == QUORIDOR_PLAY_HORIZONTAL_WALL)
+        {
+			self->hWalls[last.destPos.i][last.destPos.j] = WALL_STATE_NONE;
+			self->hWalls[last.destPos.i][last.destPos.j + 1] = WALL_STATE_NONE;
+        }
+        else if (last.action == QUORIDOR_PLAY_VERTICAL_WALL)
+        {
+			self->vWalls[last.destPos.i][last.destPos.j] = WALL_STATE_NONE;
+			self->vWalls[last.destPos.i + 1][last.destPos.j] = WALL_STATE_NONE; 
+        }
+	}
+	else if (last.action == QUORIDOR_MOVE_TO) 
+	{
+        QuoridorCore_moveTo(self, last.originPos.i, last.originPos.j);
+	}
+
+	//on remet le coup dans la liste
+	//QuoridorCore_updateValidMoves(self);  
+}
+
+
+
+
 
 void QuoridorCore_randomStart(QuoridorCore *self)
 {
@@ -739,9 +774,7 @@ void QuoridorCore_playTurn(QuoridorCore *self, QuoridorTurn turn)
 		//assert(QuoridorCore_canPlayWall(self, WALL_TYPE_VERTICAL, turn.i, turn.j));
 		QuoridorCore_playWall(self, WALL_TYPE_VERTICAL, turn.i, turn.j);
     }
-
-    // TODO
-    // Complétez les autres actions possibles.
+    
 }
 
 void QuoridorCore_print(QuoridorCore *self)

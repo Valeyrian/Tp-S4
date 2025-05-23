@@ -11,6 +11,7 @@
 
 
 
+
 ListData* AIData_create()
 {
 	QuoridorData clear;
@@ -31,7 +32,6 @@ void AIData_destroy(void* data)
 	return;
 }
 
-
 void AIData_reset(void* data)
 {
 	ListData* database = (ListData*)data;
@@ -46,9 +46,7 @@ void AIData_reset(void* data)
 
 /// @brief Calcule le plus court chemin entre la position du joueur et sa zone d'arrivée. disjktra
 void QuoridorCore_getShortestPath(QuoridorCore* self, int playerID, QuoridorPos* path, int* size)
-{
-
-
+{			
 }
 
 /// @brief Calcule une heuristique d'évaluation de l'état du jeu pour un joueur donné.
@@ -119,7 +117,7 @@ float isTheMoveWorth(int i, int j, void* aiData)
 	{
 		if (current->data.action == QUORIDOR_MOVE_TO)
 		{
-			if (current->data.pos.i == i && current->data.pos.j == j)
+			if (current->data.destPos.i == i && current->data.destPos.j == j)
 			{
 				count++;
 			}
@@ -350,14 +348,9 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 
 	float childValue = QuoridorCore_minMax(self, self->playerID, 0, DEPTH_MAX, alpha, beta, &childTurn, aiData, 0);
 
-
-\
-	
-
-
 	turn.action = childTurn.action;
-	turn.pos.i = childTurn.i;
-	turn.pos.j = childTurn.j;
+	turn.destPos.i = childTurn.i;
+	turn.destPos.j = childTurn.j;
 	turn.score = 0; //0 pour l'instant 
 
 
