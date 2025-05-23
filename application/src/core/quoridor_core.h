@@ -12,10 +12,10 @@
 
 
 /// @brief Taille maximale (largeur et hauteur) du plateau du jeu Quoridor.
-#define MAX_GRID_SIZE 9
+#define MAX_GRID_SIZE 17
 
 /// @brief Longueur maximale d'un chemin sur le plateau.
-#define MAX_PATH_LEN 82
+#define MAX_PATH_LEN 289
 
 typedef enum WallState
 {
@@ -51,8 +51,11 @@ typedef enum QuoridorState
     /// @brief Partie remportée par le joueur d'indice 1.
     QUORIDOR_STATE_P1_WON,
     QUORIDOR_STATE_P2_WON,
-
     QUORIDOR_STATE_P3_WON,
+    QUORIDOR_STATE_P4_WON,
+    QUORIDOR_STATE_P5_WON,
+    QUORIDOR_STATE_P6_WON,
+    QUORIDOR_STATE_P7_WON,
 
 } QuoridorState;
 
@@ -94,13 +97,14 @@ typedef struct QuoridorCore
     int playerID;
 
     /// @brief Position actuelle du pion de chaque joueur.
-    QuoridorPos positions[4];
+    QuoridorPos positions[8];
 
     /// @brief Nombre de murs restants pour chaque joueur.
-    int wallCounts[4];
+    int wallCounts[8];
 
-    long double timeElapsed[4];
-
+    float timeElapsed;
+    clock_t startTime;
+    int playerCount;
 
 } QuoridorCore;
 
@@ -117,7 +121,7 @@ void QuoridorCore_destroy(QuoridorCore *self);
 /// @param gridSize Taille de la grille.
 /// @param wallCount Nombre de murs initiaux par joueur.
 /// @param firstPlayer Identifiant du premier joueur (0 ou 1).
-void QuoridorCore_reset(QuoridorCore *self, int gridSize, int wallCount, int firstPlayer);
+void QuoridorCore_reset(QuoridorCore* self, int gridSize, int wallCount, int firstPlayer, int isHeight);
 
 /// @brief Place 4 murs aléatoires sur le plateau.
 /// À appeler juste après QuoridorCore_reset().

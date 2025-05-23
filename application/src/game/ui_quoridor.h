@@ -31,9 +31,12 @@ typedef struct UIQuoridor
     Text *m_textTitleInfo;
     Text *m_textInfo;
     Text *m_textTitleWalls;
-    Text *m_textWalls[4];
+    Text *m_textWalls[8];
     Text *m_textTitleDistances;
-    Text *m_textDistances[4];
+    Text * m_textTime[1];
+    Text * m_textTitleTime;
+
+    Text *m_textDistances[8];
     Text *m_textTitleSettings;
 
     UIButton *m_buttonSettings;
@@ -47,11 +50,14 @@ typedef struct UIQuoridor
     UIList *m_listCPUTime;
     UIList *m_listWallCount;
     UIList *m_listRandStart;
+    UIList *m_listPlayerCount;
 
     bool m_inSettings;
 
     QuoridorTurn m_aiTurn;
-    void *m_aiData[4];
+
+    void *m_aiData[8];
+
 
     Uint64 m_aiAccu;
 

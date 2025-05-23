@@ -58,16 +58,17 @@ void QuoridorCore_getShortestPath(QuoridorCore* self, int playerID, QuoridorPos*
 /// @return Une estimation numérique de l'avantage du joueur playerID.
 static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
 {
+
 	int playerA = playerID;
 	int playerB = playerID ^ 1;
 
-#ifdef FOURPLAYERS
+
 	playerB = (playerID + 1) % 4;
 	int playerC = (playerID + 2) % 4;
 	int playerD = (playerID + 3) % 4;
 	QuoridorPos playerCpath[MAX_GRID_SIZE * MAX_GRID_SIZE];
 	QuoridorPos playerDpath[MAX_GRID_SIZE * MAX_GRID_SIZE];
-#endif
+
 	int distA = 0;
 	int distB = 0;
 	int distC = 0;
@@ -76,8 +77,26 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
 
 	QuoridorPos playerApath[MAX_GRID_SIZE * MAX_GRID_SIZE];
 	QuoridorPos playerBpath[MAX_GRID_SIZE * MAX_GRID_SIZE];
+	if (self->playerCount == 8)
+	{
+		distA = BFS_search2(self, playerA, playerApath);
+		float scores = 0;
+
+		for (int i = 0; i < 7; i++)
+		{
+			playerA = (playerA + 1) % 8;
+			scores += BFS_search2(self, playerA, playerApath);
 
 
+		}
+		scores -= distA;
+		scores += Float_randAB(-RAND_VALUE, +RAND_VALUE);
+
+
+		return scores;
+
+
+	}
 
 #ifndef A_STAR 
 	distA = BFS_search2(self, playerA, playerApath);
@@ -88,16 +107,18 @@ static float QuoridorCore_computeScore(QuoridorCore* self, int playerID)
 #endif
 	float score = (float)(distB - distA);
 
-#ifdef FOURPLAYERS
+	if (self->playerCount == 4)
+	{
 #ifndef A_STAR 
-	distC = BFS_search2(self, playerC, playerCpath);
-	distD = BFS_search2(self, playerD, playerDpath);
+		distC = BFS_search2(self, playerC, playerCpath);
+		distD = BFS_search2(self, playerD, playerDpath);
 #else
-	distC = AStar_search(self, playerC, playerCpath);
-	distD = AStar_search(self, playerD, playerDpath);
+		distC = AStar_search(self, playerC, playerCpath);
+		distD = AStar_search(self, playerD, playerDpath);
 #endif
-	score = (float)(distB + distC + distD - distA);
-#endif // FOURPLAYERS
+		score = (float)(distB + distC + distD - distA);
+	}
+
 
 
 	score += Float_randAB(-RAND_VALUE, +RAND_VALUE);
@@ -123,7 +144,7 @@ float isTheMoveWorth(int i, int j, void* aiData)
 			}
 		}
 	}
-	//printf("%d , (%d,%d)\n", count, i, j);
+
 	if (count >= 2)
 	{
 		switch (count)
@@ -157,8 +178,8 @@ float isTheMoveWorth(int i, int j, void* aiData)
 static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth, int maxDepth, float alpha, float beta, QuoridorTurn* turn, void* aiData, int isAMoveTo)
 {
 
-#ifndef FOURPLAYERS
-	if (self->state != QUORIDOR_STATE_IN_PROGRESS) //si un des joueurs a gagné
+
+	if (self->state != QUORIDOR_STATE_IN_PROGRESS && self->playerCount == 2) //si un des joueurs a gagné
 	{
 		if (self->state == QUORIDOR_STATE_P0_WON && playerID == 0)
 			return 1000.f - currDepth;
@@ -169,7 +190,7 @@ static float QuoridorCore_minMax(QuoridorCore* self, int playerID, int currDepth
 		if (self->state == QUORIDOR_STATE_P1_WON && playerID == 1)
 			return 1000.f - currDepth;
 	}
-#endif // FOURPLAYERS
+
 
 
 	if (currDepth >= maxDepth) //si on atteint la profondeur max
@@ -320,9 +341,9 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 
 
 
-#ifdef FOURPLAYERS
 
-	if (self->wallCounts[self->playerID] == 0) 
+
+	if (self->wallCounts[self->playerID] == 0 && self->playerCount == 4)
 	{
 		QuoridorPos path[MAX_PATH_LEN];
 
@@ -340,13 +361,14 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 			return childTurn;
 		}
 	}
-#endif // FOURPLAYERS
 
 	ListData* database;
 	QuoridorData turn;  
+	int minmaxdepth = 4;
+	if(self->playerCount == 4 || self->playerCount == 8)
+		minmaxdepth = 2;
 
-
-	float childValue = QuoridorCore_minMax(self, self->playerID, 0, DEPTH_MAX, alpha, beta, &childTurn, aiData, 0);
+	float childValue = QuoridorCore_minMax(self, self->playerID, 0, minmaxdepth, alpha, beta, &childTurn, aiData, 0);
 
 	turn.action = childTurn.action;
 	turn.destPos.i = childTurn.i;
@@ -908,28 +930,29 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 			int i = current.i;
 			int j = current.j;
 
-			if (!QuoridorCore_hasWallAbove(self, i, j) && i > 0 && !visited[i - 1][j]) {
+			if (!QuoridorCore_hasWallAbove(self, i, j) && i > 0 && !visited[i - 1][j] && (((i - 1 >= 5 && i - 1 <= gridSize - 6) || (j >= 5 && j <= gridSize - 6)) || self->playerCount != 8))
+			{
 				queue[back].i = i - 1;
 				queue[back].j = j;
 				predecessor[i - 1][j] = current;
 				visited[i - 1][j] = 1;
 				back++;
 			}
-			if (!QuoridorCore_hasWallBelow(self, i, j) && i < MAX_GRID_SIZE - 1 && !visited[i + 1][j]) {
+			if (!QuoridorCore_hasWallBelow(self, i, j) && i < MAX_GRID_SIZE - 1 && !visited[i + 1][j] && (((i + 1 >= 5 && i + 1 <= gridSize - 6) || (j >= 5 && j <= gridSize - 6)) || self->playerCount != 8)) {
 				queue[back].i = i + 1;
 				queue[back].j = j;
 				predecessor[i + 1][j] = current;
 				visited[i + 1][j] = 1;
 				back++;
 			}
-			if (!QuoridorCore_hasWallLeft(self, i, j) && j > 0 && !visited[i][j - 1]) {
+			if (!QuoridorCore_hasWallLeft(self, i, j) && j > 0 && !visited[i][j - 1] && (((i >= 5 && i <= gridSize - 6) || (j - 1 >= 5 && j - 1 <= gridSize - 6)) || self->playerCount != 8)) {
 				queue[back].i = i;
 				queue[back].j = j - 1;
 				predecessor[i][j - 1] = current;
 				visited[i][j - 1] = 1;
 				back++;
 			}
-			if (!QuoridorCore_hasWallRight(self, i, j) && j < MAX_GRID_SIZE - 1 && !visited[i][j + 1]) {
+			if (!QuoridorCore_hasWallRight(self, i, j) && j < MAX_GRID_SIZE - 1 && !visited[i][j + 1] && (((i >= 5 && i <= gridSize - 6) || (j + 1 >= 5 && j + 1 <= gridSize - 6)) || self->playerCount != 8)) {
 				queue[back].i = i;
 				queue[back].j = j + 1;
 				predecessor[i][j + 1] = current;
@@ -937,25 +960,59 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 				back++;
 			}
 
+			if(self->playerCount != 8)
+				if ((current.j == 0 && playerID == 1) || (playerID == 0 && current.j == gridSize - 1) || (playerID == 2 && current.i == gridSize - 1) || (playerID == 3 && current.i == 0)) {
 
-			if ((current.j == 0 && playerID == 1) || (playerID == 0 && current.j == gridSize - 1) || (playerID == 2 && current.i == gridSize - 1) || (playerID == 3 && current.i == 0)) {
+					QuoridorPos temp = current;
+					for (int i = 0; i < MAX_PATH_LEN; i++) {
 
-				QuoridorPos temp = current;
-				for (int i = 0; i < MAX_PATH_LEN; i++) {
+						temp = predecessor[temp.i][temp.j];
+						distance++;
+						if (temp.i == -1 && temp.j == -1)
+							break;
+					}
+					temp = current;
+					for (int i = distance - 1; i >= 0; i--) {
+						tab[i] = temp;
+						temp = predecessor[temp.i][temp.j];
 
-					temp = predecessor[temp.i][temp.j];
-					distance++;
-					if (temp.i == -1 && temp.j == -1)
-						break;
+
+					}
+					return distance;
 				}
-				temp = current;
-				for (int i = distance - 1; i >= 0; i--) {
-					tab[i] = temp;
-					temp = predecessor[temp.i][temp.j];
+			if (self->playerCount == 8)
+			{
+				int i = current.i;
+				int j = current.j;
+
+				if ((i == 5 && j < 5 && playerID == 0) ||
+					(i == 11 && j < 5 && playerID == 1) ||
+					(i == 5 && j > gridSize - 6 && playerID == 5) ||
+					(i == 11 && j > gridSize - 6 && playerID == 4) ||
+					(i > gridSize - 6 && j == 5 && playerID == 2) ||
+					(i > gridSize - 6 && j == 11 && playerID == 3) ||
+					(i < 5 && j == 5 && playerID == 7) ||
+					(i < 5 && j == 11 && playerID == 6))
+				{
+					QuoridorPos temp = current;
+					for (int i = 0; i < MAX_PATH_LEN; i++) {
+
+						temp = predecessor[temp.i][temp.j];
+						distance++;
+						if (temp.i == -1 && temp.j == -1)
+							break;
+					}
+					temp = current;
+					for (int i = distance - 1; i >= 0; i--) {
+						tab[i] = temp;
+						temp = predecessor[temp.i][temp.j];
 
 
+					}
+					return distance;
 				}
-				return distance;
+
+
 			}
 		}
 		//printf("bruhh %d %d\n", self->positions[playerID].i, self->positions[playerID].j);
@@ -1045,6 +1102,7 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 				nodes[i][j].pos.i = i;
 				nodes[i][j].pos.j = j;
 				nodes[i][j].gscore = 99999;
+
 				nodes[i][j].hscore = 99999;
 				nodes[i][j].fscore = 99999;
 				nodes[i][j].inOpenList = false;
@@ -1095,6 +1153,22 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 				hasWon = (current->pos.i == gridSize - 1);
 			}
 			else if (playerID == 3) {
+				// Joueur 3 : atteindre i = 0 (côté haut)
+				hasWon = (current->pos.i == 0);
+			}
+			else if (playerID == 4) {
+				// Joueur 3 : atteindre i = 0 (côté haut)
+				hasWon = (current->pos.i == 0);
+			}
+			else if (playerID == 5) {
+				// Joueur 3 : atteindre i = 0 (côté haut)
+				hasWon = (current->pos.i == 0);
+			}
+			else if (playerID == 6) {
+				// Joueur 3 : atteindre i = 0 (côté haut)
+				hasWon = (current->pos.i == 0);
+			}
+			else if (playerID == 7) {
 				// Joueur 3 : atteindre i = 0 (côté haut)
 				hasWon = (current->pos.i == 0);
 			}
@@ -1167,16 +1241,17 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 	}
 	float QuoridorCore_scoreNoRand(QuoridorCore* self, int playerID)
 	{
+
 		int playerA = playerID;
 		int playerB = playerID ^ 1;
 
-#ifdef FOURPLAYERS
+
 		playerB = (playerID + 1) % 4;
 		int playerC = (playerID + 2) % 4;
 		int playerD = (playerID + 3) % 4;
 		QuoridorPos playerCpath[MAX_GRID_SIZE * MAX_GRID_SIZE];
 		QuoridorPos playerDpath[MAX_GRID_SIZE * MAX_GRID_SIZE];
-#endif
+
 		int distA = 0;
 		int distB = 0;
 		int distC = 0;
@@ -1185,8 +1260,26 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 
 		QuoridorPos playerApath[MAX_GRID_SIZE * MAX_GRID_SIZE];
 		QuoridorPos playerBpath[MAX_GRID_SIZE * MAX_GRID_SIZE];
+		if (self->playerCount == 8)
+		{
+			distA = BFS_search2(self, playerA, playerApath);
+			float scores = 0;
+
+			for (int i = 0; i < 7; i++)
+			{
+				playerA = (playerA + 1) % 8;
+				scores += BFS_search2(self, playerA, playerApath);
 
 
+			}
+			scores /= 7;
+			scores -= distA;
+
+
+			return scores;
+
+
+		}
 
 #ifndef A_STAR 
 		distA = BFS_search2(self, playerA, playerApath);
@@ -1197,22 +1290,17 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 #endif
 		float score = (float)(distB - distA);
 
-#ifdef FOURPLAYERS
+		if (self->playerCount == 4)
+		{
 #ifndef A_STAR 
-		distC = BFS_search2(self, playerC, playerCpath);
-		distD = BFS_search2(self, playerD, playerDpath);
+			distC = BFS_search2(self, playerC, playerCpath);
+			distD = BFS_search2(self, playerD, playerDpath);
 #else
-		distC = AStar_search(self, playerC, playerCpath);
-		distD = AStar_search(self, playerD, playerDpath);
+			distC = AStar_search(self, playerC, playerCpath);
+			distD = AStar_search(self, playerD, playerDpath);
 #endif
-		score = (float)((distB + distC + distD)/3 - distA);
-#endif // FOURPLAYERS
-
-
-
-
-
-		//printf("pos = %d,%d   %.2f\n", self->positions[playerA].i, self->positions[playerA].j,score);
+			score = (float)(distB + distC + distD - distA);
+		}
 
 
 
@@ -1220,5 +1308,4 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 
 		return score;
 	}
-
 
