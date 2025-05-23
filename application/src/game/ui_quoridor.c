@@ -10,7 +10,7 @@
 #include "core/graph.h"
 #include "core/quoridor_ai.h"
 #include <time.h>
-
+#include <core/listData.h>
 
 static bool UIQuoridor_isPlayerTurn(UIQuoridor *self)
 {
@@ -44,18 +44,29 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
             case 2: depth = 5; break;
             }
 
-			clock_t startTime = clock();
+            clock_t startTime = clock();
 
+           
+            int currentPlayerBeforeMove = core->playerID;
+            
             self->m_aiTurn = QuoridorCore_computeTurn(core, depth, self->m_aiData[core->playerID]);
+           
+            
+            QuoridorData data;
+            data.action = self->m_aiTurn.action;
+            data.destPos.i = self->m_aiTurn.i;
+            data.destPos.j = self->m_aiTurn.j;
+            data.originPos = core->positions[currentPlayerBeforeMove]; 
 
-			clock_t endTime = clock();
+           
+            AIData_add(self->m_aiData[currentPlayerBeforeMove], data);
 
-			core->timeElapsed[core->playerID] += (float)(endTime - startTime) / CLOCKS_PER_SEC;  // temps que l'ia a mis
-
+            clock_t endTime = clock();
+            core->timeElapsed[currentPlayerBeforeMove] += (float)(endTime - startTime) / CLOCKS_PER_SEC;
         }
         else
         {
-            self->m_aiAccu += Timer_getDeltaMS(g_time);
+            self->m_aiAccu += Timer_getDeltaMS(g_time); 
             Uint64 minTime = 0;
             switch (UIList_getSelected(self->m_listCPUTime))
             {
@@ -74,7 +85,7 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
             }
         }
     }
-    else
+    else 
     {
         // Tour du joueur
 
@@ -86,6 +97,9 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
         Input *input = Scene_getInput(self->m_scene);
         if (input->validatePressed == false) return;
 
+        
+        int currentPlayerBeforeMove = core->playerID;
+
         Vec2 mousePos = input->mousePos;
         for (int i = 0; i < gridSize; i++)
         {
@@ -95,12 +109,23 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
                 {
                     if (QuoridorCore_canMoveTo(core, i, j))
                     {
-						clock_t endTime = clock();  
+                        endTime = clock();
+
+                        
+                        QuoridorData data;
+                        data.action = QUORIDOR_MOVE_TO;
+                        data.destPos.i = i;
+                        data.destPos.j = j;
+                        data.originPos = core->positions[currentPlayerBeforeMove]; // Position avt mvt 
+
+                        
                         QuoridorCore_moveTo(core, i, j);
+                        core->timeElapsed[currentPlayerBeforeMove] = (float)(endTime - startTime) / CLOCKS_PER_SEC;
 
-						core->timeElapsed[core->playerID] = (float)(endTime - startTime) / CLOCKS_PER_SEC;  
-                        //QuoridorCore_print(core);
+                        
+                        AIData_add(self->m_aiData[currentPlayerBeforeMove], data);
 
+                        return; 
                     }
                 }
             }
@@ -114,10 +139,21 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
                 {
                     if (QuoridorCore_canPlayWall(core, WALL_TYPE_HORIZONTAL, i, j))
                     {
-						endTime = clock(); 
+                        endTime = clock();
+
+                        // CORRECTION 7: Enregistrer AVANT de poser le mur
+                        QuoridorData data;
+                        data.action = QUORIDOR_PLAY_HORIZONTAL_WALL;
+                        data.destPos.i = i;
+                        data.destPos.j = j;
+                        data.originPos = core->positions[currentPlayerBeforeMove];
+
                         QuoridorCore_playWall(core, WALL_TYPE_HORIZONTAL, i, j);
-						core->timeElapsed[core->playerID] = (float)(endTime - startTime) / CLOCKS_PER_SEC; 
-                        //QuoridorCore_print(core);
+                        core->timeElapsed[currentPlayerBeforeMove] = (float)(endTime - startTime) / CLOCKS_PER_SEC;
+
+                        // CORRECTION 8: Enregistrer dans la liste du BON joueur
+                        AIData_add(self->m_aiData[currentPlayerBeforeMove], data);
+                        return; // Important: sortir après avoir traité le mur
                     }
                 }
                 if (FRect_containsPoint(&(self->m_rectMouseVWalls[i][j]), mousePos))
@@ -125,9 +161,20 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
                     if (QuoridorCore_canPlayWall(core, WALL_TYPE_VERTICAL, i, j))
                     {
                         endTime = clock();
+
+                        // CORRECTION 9: Enregistrer AVANT de poser le mur
+                        QuoridorData data;
+                        data.action = QUORIDOR_PLAY_VERTICAL_WALL;
+                        data.destPos.i = i;
+                        data.destPos.j = j;
+                        data.originPos = core->positions[currentPlayerBeforeMove];
+
                         QuoridorCore_playWall(core, WALL_TYPE_VERTICAL, i, j);
-						core->timeElapsed[core->playerID] = (float)(endTime - startTime) / CLOCKS_PER_SEC;  
-                        //QuoridorCore_print(core);
+                        core->timeElapsed[currentPlayerBeforeMove] = (float)(endTime - startTime) / CLOCKS_PER_SEC;
+
+                        // CORRECTION 10: Enregistrer dans la liste du BON joueur
+                        AIData_add(self->m_aiData[currentPlayerBeforeMove], data);
+                        return; // Important: sortir après avoir traité le mur
                     }
                 }
             }
@@ -203,9 +250,9 @@ UIQuoridor *UIQuoridor_create(Scene *scene)
     self->m_aiTurn.action = QUORIDOR_ACTION_UNDEFINED;
 
     QuoridorCore *core = Scene_getQuoridorCore(scene);
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < 4; i++)
     {
-        self->m_aiData[i] = AIData_create(core);
+        self->m_aiData[i] = AIData_create(core); 
     }
 
     AssetManager *assets = Scene_getAssetManager(scene);
@@ -275,7 +322,10 @@ UIQuoridor *UIQuoridor_create(Scene *scene)
         scene, rect, font, "Back",
         g_colors.white, g_colors.cell, g_colors.selected
     );
-
+    self->m_buttonActionBack = UIButton_create( 
+        scene, rect, font, "<-",
+        g_colors.white, g_colors.cell, g_colors.selected 
+    );
     // Textes
     font = AssetManager_getFont(assets, FONT_NORMAL);
     self->m_textTitleInfo = Text_create(g_renderer, font, "Information", g_colors.white);
@@ -346,6 +396,7 @@ void UIQuoridor_destroy(UIQuoridor *self)
     UIButton_destroy(self->m_buttonSettings);
     UIButton_destroy(self->m_buttonRestart);
     UIButton_destroy(self->m_buttonBack);
+	UIButton_destroy(self->m_buttonActionBack);
 
     free(self);
 }
@@ -374,6 +425,7 @@ void UIQuoridor_updatePageMain(UIQuoridor *self)
 
     UIButton_update(self->m_buttonSettings);
     UIButton_update(self->m_buttonRestart);
+	UIButton_update(self->m_buttonActionBack);
 
     if (UIButton_isPressed(self->m_buttonSettings))
     {
@@ -382,6 +434,10 @@ void UIQuoridor_updatePageMain(UIQuoridor *self)
     else if (UIButton_isPressed(self->m_buttonRestart))
     {
         UIQuoridor_restartQuoridor(self);
+    }
+    else if (UIButton_isPressed(self->m_buttonActionBack))
+    {
+        QuoridorCore_Undo(core, self);
     }
     else
     {
@@ -513,9 +569,9 @@ void UIQuoridor_restartQuoridor(UIQuoridor *self)
         QuoridorCore_randomStart(core);
     }
 
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < 4; i++)
     {
-        AIData_reset(self->m_aiData[i]);
+        AIData_reset(self->m_aiData[i]); 
     }
 
     self->m_aiTurn.action = QUORIDOR_ACTION_UNDEFINED;
@@ -551,6 +607,10 @@ void UIQuoridor_updateRects(UIQuoridor *self)
 
     rect.x += roundf(rect.w + 0.2f * scale);
     UIButton_setRect(self->m_buttonRestart, rect);
+
+    rect.x += roundf(rect.w + 0.2f * scale); 
+	UIButton_setRect(self->m_buttonActionBack, rect);
+
 
     const float labelRatio = 0.4f;
     const float settingsW = 6.0f;
@@ -862,6 +922,7 @@ void UIQuoridor_renderPageMain(UIQuoridor *self)
     // UIButtons
     UIButton_render(self->m_buttonSettings);
     UIButton_render(self->m_buttonRestart);
+	UIButton_render(self->m_buttonActionBack);
 
     // Panels
     const float blockSep = 20.f;
@@ -904,7 +965,7 @@ void UIQuoridor_renderPageMain(UIQuoridor *self)
                 score = 0;
             if (score > 20)
                 score = 20;
-            printf("%.2f\n", score);
+            //printf("%.2f\n", score);
             SDL_FRect dstRect = { 0 };
             dstRect.x = roundf(x);
             dstRect.y = roundf(y);

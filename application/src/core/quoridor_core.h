@@ -7,6 +7,8 @@
 #pragma once
 
 #include "settings.h"
+//
+
 
 
 /// @brief Taille maximale (largeur et hauteur) du plateau du jeu Quoridor.
@@ -259,3 +261,5 @@ INLINE void QuoridorCore_setValidPosition(QuoridorCore *self, int i, int j, bool
         self->isValid[i][j] = isValid;
     }
 }
+
+

@@ -1,7 +1,4 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include "core/quoridor_core.h"
-#include "core/quoridor_ai.h"
+
 #include "core/listData.h" // Assurez-vous de créer ce .h avec les définitions de NodeData et ListData
 
 // Crée une nouvelle liste vide
@@ -86,7 +83,11 @@ int ListData_popLast(ListData* list, QuoridorData* outData)
     NodeData* current = list->head;
     NodeData* prev = NULL;
 
-  
+    // CORRECTION: Itérer jusqu'au dernier élément
+    while (current->next != NULL) {
+        prev = current;
+        current = current->next;
+    }
 
     if (prev == NULL) {
         // Un seul élément dans la liste
@@ -100,10 +101,71 @@ int ListData_popLast(ListData* list, QuoridorData* outData)
         *outData = current->data;
     }
 
-
-
     free(current);
     return 1;
 }
 
+
+QuoridorData ListData_popFirst(ListData* list)
+{
+    QuoridorData empty ;
+	empty.action = 0;
+	empty.destPos.i = -1;
+	empty.destPos.j = -1;
+	empty.originPos.i = -1;
+	empty.originPos.j = -1;
+	empty.score = 0;
+    if (list == NULL || list->head == NULL)
+        return empty;
+
+    NodeData* firstNode = list->head;  
+    list->head = firstNode->next;
+
+    QuoridorData data = firstNode->data;
+
+
+    firstNode->data.action = 0; 
+	firstNode->data.destPos.i = 0; 
+	firstNode->data.destPos.j = 0; 
+	firstNode->data.originPos.i = 0; 
+	firstNode->data.originPos.j = 0; 
+	firstNode->data.score = 0;
+    firstNode->next = NULL;
+
+    if (list->head != NULL)
+    {
+        NodeData* current = list->head;
+        
+        while (current->next != NULL)
+            current = current->next;
+
+        current->next = firstNode; 
+    }
+    else
+    {
+        list->head = firstNode; 
+    }
+
+    return data;
+}
+void ListData_debug(ListData* list, const char* name)
+{
+    printf("DEBUG: Liste %s:\n", name);
+    if (list == NULL || list->head == NULL) {
+        printf("  Liste vide\n");
+        return;
+    }
+
+    NodeData* current = list->head;
+    int count = 0;
+    while (current != NULL && count < 5)
+    { // Afficher seulement les 5 premiers
+        printf("  [%d] Action=%d, Dest=(%d,%d), Origin=(%d,%d)\n",
+            count, current->data.action,
+            current->data.destPos.i, current->data.destPos.j,
+            current->data.originPos.i, current->data.originPos.j);
+        current = current->next;
+        count++;
+    }
+}
 
