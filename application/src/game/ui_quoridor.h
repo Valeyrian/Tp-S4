@@ -43,6 +43,7 @@ typedef struct UIQuoridor
     UIButton *m_buttonRestart;
     UIButton *m_buttonBack;
 	UIButton* m_buttonActionBack;
+	UIButton* m_buttonCheatSwitch;
 
     UIList *m_listMode;
     UIList *m_listLevel;
@@ -53,7 +54,7 @@ typedef struct UIQuoridor
     UIList *m_listPlayerCount;
 
     bool m_inSettings;
-
+    bool m_isCheatEnable;
     QuoridorTurn m_aiTurn;
 
     void *m_aiData[8];

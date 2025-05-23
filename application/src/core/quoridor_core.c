@@ -34,6 +34,8 @@ void QuoridorCore_reset(QuoridorCore* self, int gridSize, int wallCount, int fir
     memset(self, 0, sizeof(QuoridorCore));
     self->gridSize = gridSize;
     self->playerID = firstPlayer;
+    self->startTime = clock();
+
     if (!isHeight)
     {
 
