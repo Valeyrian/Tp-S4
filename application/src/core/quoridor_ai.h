@@ -9,11 +9,10 @@
 #include "settings.h"
 #include "core/quoridor_core.h"
 #include "core/utils.h"
-#include "core/listData.h"
+#include "core/listData.h" 
 
 
 
-#define MAX_BACK_ANALYS 6
 #define MAX_BEST_WALLS 500
 #define RAND_VALUE 0.25
 #define ALL_WALLS 

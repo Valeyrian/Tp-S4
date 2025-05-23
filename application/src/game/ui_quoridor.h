@@ -13,6 +13,7 @@
 #include "game/ui_button.h"
 #include "game/ui_list.h"
 
+
 typedef struct Scene Scene;
 
 typedef struct UIQuoridor
@@ -41,6 +42,7 @@ typedef struct UIQuoridor
     UIButton *m_buttonSettings;
     UIButton *m_buttonRestart;
     UIButton *m_buttonBack;
+	UIButton* m_buttonActionBack;
 
     UIList *m_listMode;
     UIList *m_listLevel;
@@ -53,11 +55,12 @@ typedef struct UIQuoridor
     bool m_inSettings;
 
     QuoridorTurn m_aiTurn;
+
     void *m_aiData[8];
+
 
     Uint64 m_aiAccu;
 
-	
 
 
 } UIQuoridor;
@@ -76,3 +79,5 @@ void UIQuoridor_render(UIQuoridor *self);
 void UIQuoridor_renderPageMain(UIQuoridor *self);
 void UIQuoridor_renderPageSettings(UIQuoridor *self);
 void UIQuoridor_renderBoard(UIQuoridor *self);
+
+void QuoridorCore_Undo(QuoridorCore* self, UIQuoridor* uiSelf); 
