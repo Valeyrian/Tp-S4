@@ -31,7 +31,8 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
     bool playerTurn = UIQuoridor_isPlayerTurn(self);
     clock_t endTime = clock();
 
-    core->timeElapsed = (float)(endTime - core->startTime) / CLOCKS_PER_SEC;
+    core->timeElapsed = (float)(endTime - core->startTime) / CLOCKS_PER_SEC; 
+  
 
     if (playerTurn == false)
     {
@@ -67,8 +68,8 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
             AIData_add(self->m_aiData[currentPlayerBeforeMove], data);
 
 
-            clock_t endTime = clock();
-            core->timeElapsed[currentPlayerBeforeMove] += (float)(endTime - startTime) / CLOCKS_PER_SEC;
+            clock_t startTime = clock();
+
         }
         else
         {
@@ -129,7 +130,6 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
                         
 
                         QuoridorCore_moveTo(core, i, j);
-                        core->timeElapsed[currentPlayerBeforeMove] = (float)(endTime - startTime) / CLOCKS_PER_SEC;
 
 
                         core->startTime = clock();
@@ -166,7 +166,6 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
 
                         //QuoridorCore_print(core);
 
-                        core->timeElapsed[currentPlayerBeforeMove] = (float)(endTime - startTime) / CLOCKS_PER_SEC;
 
                         // CORRECTION 8: Enregistrer dans la liste du BON joueur
                         AIData_add(self->m_aiData[currentPlayerBeforeMove], data);
@@ -189,7 +188,6 @@ void UIQuoridor_updateTurn(UIQuoridor *self)
                         data.originPos = core->positions[currentPlayerBeforeMove];
 
                         QuoridorCore_playWall(core, WALL_TYPE_VERTICAL, i, j);
-                        core->timeElapsed[currentPlayerBeforeMove] = (float)(endTime - startTime) / CLOCKS_PER_SEC;
 
                         // CORRECTION 10: Enregistrer dans la liste du BON joueur
                         AIData_add(self->m_aiData[currentPlayerBeforeMove], data);

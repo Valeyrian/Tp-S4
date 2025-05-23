@@ -17,7 +17,7 @@ QuoridorCore* QuoridorCore_create()
 	QuoridorCore* self = (QuoridorCore*)calloc(1, sizeof(QuoridorCore));
 	AssertNew(self);
 
-	QuoridorCore_reset(self, 9, 10, 0);
+	QuoridorCore_reset(self, 9, 10, 0,0);
 return self;
 }
 
@@ -29,12 +29,12 @@ void QuoridorCore_destroy(QuoridorCore* self)
 
 
 
-void QuoridorCore_reset(QuoridorCore *self, int gridSize, int wallCount, int firstPlayer, int isHeight)
+void QuoridorCore_reset(QuoridorCore* self, int gridSize, int wallCount, int firstPlayer, int isHeight)
 {
     memset(self, 0, sizeof(QuoridorCore));
     self->gridSize = gridSize;
     self->playerID = firstPlayer;
-    if(!isHeight)
+    if (!isHeight)
     {
 
 
@@ -100,7 +100,8 @@ void QuoridorCore_reset(QuoridorCore *self, int gridSize, int wallCount, int fir
 
     }
 
-
+	QuoridorCore_updateValidMoves(self);
+}
 
 
 
