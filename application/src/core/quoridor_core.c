@@ -1203,7 +1203,7 @@ bool QuoridorCore_isFeasible(QuoridorCore* self)
         && QuoridorCore_isFeasibleRec2(self, explored2, self->positions[2].i, self->positions[2].j)
         && QuoridorCore_isFeasibleRec3(self, explored3, self->positions[3].i, self->positions[3].j))
     {
-
+        printf("aaaa");
         return true;
     }
 
@@ -1222,10 +1222,10 @@ bool QuoridorCore_isFeasible(QuoridorCore* self)
         && QuoridorCore_isFeasibleRec01(self, explored1, self->positions[1].i, self->positions[1].j)
         && QuoridorCore_isFeasibleRec02(self, explored2, self->positions[2].i, self->positions[2].j)
         && QuoridorCore_isFeasibleRec03(self, explored3, self->positions[3].i, self->positions[3].j)
-        && QuoridorCore_isFeasibleRec04(self, explored4, self->positions[3].i, self->positions[3].j)
-        && QuoridorCore_isFeasibleRec05(self, explored5, self->positions[3].i, self->positions[3].j)
-        && QuoridorCore_isFeasibleRec06(self, explored6, self->positions[3].i, self->positions[3].j)
-        && QuoridorCore_isFeasibleRec07(self, explored7, self->positions[3].i, self->positions[3].j))
+        && QuoridorCore_isFeasibleRec04(self, explored4, self->positions[4].i, self->positions[4].j)
+        && QuoridorCore_isFeasibleRec05(self, explored5, self->positions[5].i, self->positions[5].j)
+        && QuoridorCore_isFeasibleRec06(self, explored6, self->positions[6].i, self->positions[6].j)
+        && QuoridorCore_isFeasibleRec07(self, explored7, self->positions[7].i, self->positions[7].j))
     {
 
         return true;

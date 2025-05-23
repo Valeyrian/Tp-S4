@@ -1299,7 +1299,7 @@ QuoridorTurn QuoridorCore_computeTurn(QuoridorCore* self, int depth, void* aiDat
 			distC = AStar_search(self, playerC, playerCpath);
 			distD = AStar_search(self, playerD, playerDpath);
 #endif
-			score = (float)(distB + distC + distD - distA);
+			score = (float)((distB + distC + distD )/3- distA);
 		}
 
 

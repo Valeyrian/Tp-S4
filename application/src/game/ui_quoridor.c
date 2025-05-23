@@ -531,22 +531,22 @@ void UIQuoridor_updatePageMain(UIQuoridor *self)
         else if (core->state == QUORIDOR_STATE_P4_WON)
         {
             Text_setString(self->m_textInfo, playerTurn ? "Player 5 WON" : "CPU 5 WON");
-            Text_setColor(self->m_textInfo, g_colors.player[3]);
+            Text_setColor(self->m_textInfo, g_colors.player[4]);
         }
         else if (core->state == QUORIDOR_STATE_P5_WON)
         {
             Text_setString(self->m_textInfo, playerTurn ? "Player 6 WON" : "CPU 6 WON");
-            Text_setColor(self->m_textInfo, g_colors.player[3]);
+            Text_setColor(self->m_textInfo, g_colors.player[5]);
         }
         else if (core->state == QUORIDOR_STATE_P6_WON)
         {
             Text_setString(self->m_textInfo, playerTurn ? "Player 7 WON" : "CPU 7 WON");
-            Text_setColor(self->m_textInfo, g_colors.player[3]);
+            Text_setColor(self->m_textInfo, g_colors.player[6]);
         }
         else if (core->state == QUORIDOR_STATE_P7_WON)
         {
             Text_setString(self->m_textInfo, playerTurn ? "Player 8 WON" : "CPU 8 WON");
-            Text_setColor(self->m_textInfo, g_colors.player[3]);
+            Text_setColor(self->m_textInfo, g_colors.player[7]);
         }
     }
 }
